@@ -845,6 +845,58 @@
         pr.bone.parent.getWorldQuaternion(_rq3);
         pr.bone.quaternion.copy(_rq3.invert().multiply(_rq2));
       }
+      // Positional pass for the arm chains: rotation transfer alone
+      // leaves the model's wrists off the driver's wrist positions
+      // whenever the model's proportions differ from the rig's — the
+      // anime model's shoulders are ~0.20m apart vs the rig's 0.40m,
+      // which threw cross-body reaches (the BSL support hand) off by
+      // ~10cm. So per arm: aim the model's upper-arm bone at the
+      // driver's elbow position and its forearm bone at the driver's
+      // wrist position (directions from the model's own joints, lengths
+      // from its own skeleton), then re-apply the wrist + finger
+      // quaternion pairs so palm and finger orientations stay authored.
+      function aimBoneWorld(bone, childBone, targetPos) {
+        var bp = bone.getWorldPosition(new THREE.Vector3());
+        var cp = childBone.getWorldPosition(new THREE.Vector3());
+        var cur = cp.sub(bp);
+        if (cur.lengthSq() < 1e-8) return;
+        cur.normalize();
+        var want = targetPos.clone().sub(bp);
+        if (want.lengthSq() < 1e-8) return;
+        want.normalize();
+        var q = new THREE.Quaternion().setFromUnitVectors(cur, want);
+        var bw = bone.getWorldQuaternion(new THREE.Quaternion());
+        var pw = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+        bone.quaternion.copy(pw.invert().multiply(q).multiply(bw));
+        bone.updateWorldMatrix(true, true);
+      }
+      [armR, armL].forEach(function (arm) {
+        var shP = null, elP = null, wrP = null, handPairs = [];
+        for (var j = 0; j < rb.pairs.length; j++) {
+          var p2 = rb.pairs[j];
+          if (p2.driver === arm.shoulder) shP = p2;
+          else if (p2.driver === arm.elbow) elP = p2;
+          else if (p2.driver === arm.wrist) { wrP = p2; handPairs.push(p2); }
+          else if (p2.driver === arm.thumb.base || p2.driver === arm.thumb.mid) handPairs.push(p2);
+          else {
+            for (var fi = 0; fi < 4; fi++) {
+              var f = arm.fingers[fi];
+              if (p2.driver === f.base || p2.driver === f.mid || p2.driver === f.tip) { handPairs.push(p2); break; }
+            }
+          }
+        }
+        if (!shP || !elP || !wrP) return;
+        var eT = elP.driver.getWorldPosition(new THREE.Vector3());
+        var wT = wrP.driver.getWorldPosition(new THREE.Vector3());
+        aimBoneWorld(shP.bone, elP.bone, eT);
+        aimBoneWorld(elP.bone, wrP.bone, wT);
+        handPairs.forEach(function (fp) {
+          fp.driver.getWorldQuaternion(_rq1);
+          _rq2.copy(_rq1).multiply(fp.d0inv).multiply(fp.w0);
+          fp.bone.parent.getWorldQuaternion(_rq3);
+          fp.bone.quaternion.copy(_rq3.invert().multiply(_rq2));
+        });
+      });
     }
 
     async function rbLoad(model) {
@@ -1043,10 +1095,33 @@
           b.quaternion.copy(pw.invert().multiply(q).multiply(bw));
           model.updateMatrixWorld(true);
         }
-        aimBone('J_Bip_R_UpperArm', 'J_Bip_R_LowerArm', 0.06, -1, 0.18);
-        aimBone('J_Bip_R_LowerArm', 'J_Bip_R_Hand', 0.12, -0.80, 0.55);
-        aimBone('J_Bip_L_UpperArm', 'J_Bip_L_LowerArm', -0.06, -1, 0.18);
-        aimBone('J_Bip_L_LowerArm', 'J_Bip_L_Hand', -0.12, -0.80, 0.55);
+        // Aim each arm so the model's wrist lands exactly on the DRIVER's
+        // rest wrist target (REST.R/L.t), solving the elbow with the same
+        // down-back-out pole solveArm uses. The earlier hand-picked aim
+        // directions left the model's rest hands ~13cm away from the
+        // driver's rest hands, and that offset carried into every sign —
+        // hands landed too central, too far forward, and the two hands
+        // separated during two-handed signs and BSL fingerspelling.
+        function aimArm(P, restT) {
+          var S = wp('J_Bip_' + P + '_UpperArm');
+          var E0 = wp('J_Bip_' + P + '_LowerArm');
+          var H0 = wp('J_Bip_' + P + '_Hand');
+          var l1 = S.distanceTo(E0), l2 = E0.distanceTo(H0);
+          var W = new THREE.Vector3(restT[0], restT[1], restT[2]);
+          var n = W.clone().sub(S);
+          var d = Math.min(n.length(), l1 + l2 - 0.004);
+          n.normalize();
+          var pole = new THREE.Vector3(Math.sign(S.x) * 0.35 || 0.35, -1, -0.30);
+          var m = pole.sub(n.clone().multiplyScalar(pole.dot(n))).normalize();
+          var cosA = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d)));
+          var sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+          var E = S.clone().add(n.clone().multiplyScalar(cosA * l1)).add(m.multiplyScalar(sinA * l1));
+          var d1 = E.clone().sub(S), d2 = W.clone().sub(E);
+          aimBone('J_Bip_' + P + '_UpperArm', 'J_Bip_' + P + '_LowerArm', d1.x, d1.y, d1.z);
+          aimBone('J_Bip_' + P + '_LowerArm', 'J_Bip_' + P + '_Hand', d2.x, d2.y, d2.z);
+        }
+        aimArm('R', REST.R.t);
+        aimArm('L', REST.L.t);
         var pairs = [];
         vrmDriverList().forEach(function (dp) {
           var bone = rbFindBone(model, dp[1]);
@@ -1271,7 +1346,7 @@
         };
         if (item.support) {
           var s = item.support;
-          var off = item.supportPos || [-0.18, -0.09, 0.0];
+          var off = item.supportPos || [0.02, -0.05, -0.05];
           t.L = {
             t: [-(0.24 + off[0]), 0.22 + off[1], 0.26 + off[2]],
             curl: s.curl, palm: s.palm,
@@ -1300,6 +1375,7 @@
     // Animation driver: one rAF loop, queue of items, move->hold per item.
     var queue = [];
     var active = null; // {item, target, phase, start, dur, holdMs}
+    var lastSignEnd = 0; // when the last queued item finished (rest delay)
     var lastBlink = 0, blinkUntil = 0;
 
     function enqueue(items) {
@@ -1372,11 +1448,12 @@
               cur.R.t[1] = 0.22 + Math.cos(mt * 3.5) * 0.02;
             }
           }
-          if (el >= active.holdMs) active = null;
+          if (el >= active.holdMs) { active = null; lastSignEnd = now; }
         }
       } else if (!queue.length) {
-        // idle: drift back to rest
-        blendPose(cur, REST, 0.06);
+        // After signing, hold the final pose a beat, then relax slowly —
+        // an instant snap back to rest reads as robotic.
+        if (now - lastSignEnd > 700) blendPose(cur, REST, 0.03);
         faceTarget = 'neutral';
       }
       // letter motion needs a persistent wristTwist field reset each frame
@@ -1538,7 +1615,7 @@
         var sup = lp.preset.support;
         var curl = sup === 'fist' ? shapeFor('fist') : shapeFor('flat');
         item.support = { curl: curl, palm: sup === 'flat-up' ? 'up' : sup === 'flat-fwd' ? 'fwd' : 'fwd' };
-        item.supportPos = lp.preset.supportPos || [-0.18, -0.09, 0.0];
+        item.supportPos = lp.preset.supportPos || [0.02, -0.05, -0.05];
       } else if (spellLang === 'bsl' || spellLang === 'psl') {
         // Two-handed alphabets (BSL/PSL): the support hand is held flat,
         // palm up, under the dominant hand for EVERY letter — that is the
@@ -1547,7 +1624,7 @@
         // yet authored keep their existing fallback shape; this only
         // guarantees both hands work while spelling, as they should.
         item.support = { curl: shapeFor('flat'), palm: 'up' };
-        item.supportPos = [-0.18, -0.09, 0.0];
+        item.supportPos = [0.02, -0.05, -0.05];
       }
       return item;
     }

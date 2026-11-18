@@ -108,15 +108,15 @@ window.VOCLYNX_FINGERSPELL3D = {
   // fingertip under the pointing index (approximate geometry).
   bsl: {
     // A: point to the tip of the support thumb
-    "A": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.06, -0.11, -0.04] },
+    "A": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.06, -0.06, -0.04] },
     // E: point to the tip of the support index finger
-    "E": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.03, -0.10, -0.09] },
+    "E": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.03, -0.05, -0.09] },
     // I: point to the tip of the support middle finger
-    "I": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.01, -0.10, -0.10] },
+    "I": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.01, -0.05, -0.10] },
     // O: point to the tip of the support ring finger
-    "O": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.01, -0.10, -0.09] },
+    "O": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.01, -0.05, -0.09] },
     // U: point to the tip of the support little finger
-    "U": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.03, -0.10, -0.08] }
+    "U": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.03, -0.05, -0.08] }
   },
 
   // ---------------- PSL: two-handed alphabet (PARTIAL — vowels only) --------
@@ -127,15 +127,15 @@ window.VOCLYNX_FINGERSPELL3D = {
   // authored yet — see VOCLYNX_FINGERSPELL3D_NEEDS_REVIEW.
   psl: {
     // A: point to the tip of the support thumb
-    "A": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.06, -0.11, -0.04] },
+    "A": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.06, -0.06, -0.04] },
     // E: point to the tip of the support index finger
-    "E": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.03, -0.10, -0.09] },
+    "E": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.03, -0.05, -0.09] },
     // I: point to the tip of the support middle finger
-    "I": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.01, -0.10, -0.10] },
+    "I": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [0.01, -0.05, -0.10] },
     // O: point to the tip of the support ring finger
-    "O": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.01, -0.10, -0.09] },
+    "O": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.01, -0.05, -0.09] },
     // U: point to the tip of the support little finger
-    "U": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.03, -0.10, -0.08] }
+    "U": { shape: { I: 0, M: 1, R: 1, P: 1, T: 0.9, spread: 0 }, support: "flat-up", supportPos: [-0.03, -0.05, -0.08] }
   }
 };
 

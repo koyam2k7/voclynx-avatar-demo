@@ -929,6 +929,131 @@
       }
     }
 
+    /* ---------------- VRM anime model (demo, 2026-11-18) ----------------
+       When opts.vrm is set, the 'nia' avatar is a real anime character
+       (VRoid-format VRM, recoloured to the owner's sample: deep-brown
+       skin, near-black hair, orange top) loaded with GLTFLoader and
+       driven by the same retarget machinery as Rocketbox: the invisible
+       procedural rig solves the sign, and world-quaternion deltas
+       transfer onto the model's J_Bip humanoid bones, fingers included.
+       Other avatars keep the procedural anime look. Face grammar maps
+       onto the model's Fcl morphs (Joy / Angry / Surprised / brows /
+       blink). */
+    var vrmMode = !!(opts && opts.vrm);
+    var vrmUrl = vrmMode ? String(opts.vrm.url || 'models/anime/nia.vrm') : '';
+    var vrmFace = null; // { mesh, idx: { morphSuffix -> influence index } }
+
+    function vrmDriverList() {
+      var list = [];
+      [[armR, 'R'], [armL, 'L']].forEach(function (spec) {
+        var arm = spec[0], P = spec[1];
+        list.push([arm.shoulder, 'J_Bip_' + P + '_UpperArm']);
+        list.push([arm.elbow, 'J_Bip_' + P + '_LowerArm']);
+        list.push([arm.wrist, 'J_Bip_' + P + '_Hand']);
+        var names = ['Index', 'Middle', 'Ring', 'Little'];
+        for (var i = 0; i < 4; i++) {
+          var f = arm.fingers[i], bn = 'J_Bip_' + P + '_' + names[i];
+          list.push([f.base, bn + '1']); list.push([f.mid, bn + '2']); list.push([f.tip, bn + '3']);
+        }
+        list.push([arm.thumb.base, 'J_Bip_' + P + '_Thumb1']);
+        list.push([arm.thumb.mid, 'J_Bip_' + P + '_Thumb2']);
+        list.push([arm.thumb.mid, 'J_Bip_' + P + '_Thumb3']);
+      });
+      return list;
+    }
+
+    function vrmUnload() {
+      if (rb && rb.wrap) { scene.remove(rb.wrap); rbDisposeWrap(rb.wrap); rb.wrap = null; }
+      if (rb) { rb.pairs = []; rb.ready = false; rb.model = null; }
+      vrmFace = null;
+      rig.visible = true;
+      camera.position.set(0, 0.30, 1.55);
+      camera.lookAt(0, 0.25, 0);
+    }
+
+    function vrmApplyFace() {
+      if (!vrmFace || !rb || rb.model !== 'vrm') return;
+      var inf = vrmFace.mesh.morphTargetInfluences, idx = vrmFace.idx;
+      function set(key, w) { var i = idx[key]; if (i != null) inf[i] = w; }
+      set('joy', 0); set('angry', 0); set('fun', 0); set('sorrow', 0); set('surprised', 0);
+      if (faceTarget === 'positive') set('joy', 0.7);
+      else if (faceTarget === 'question') { set('surprised', 0.55); set('fun', 0.25); }
+      else if (faceTarget === 'emphasis') set('angry', 0.6);
+      set('blink', Math.min(1, Math.max(0, 1 - (blinkScale || 1))));
+    }
+
+    async function vrmLoad() {
+      if (!rb) rb = {};
+      if (typeof THREE.GLTFLoader === 'undefined') return false;
+      var token = (rb.token || 0) + 1;
+      rb.token = token; rb.ready = false;
+      try {
+        // Fetch once: the same bytes feed GLTFLoader and the VRM
+        // blend-shape table (GLTFLoader drops the VRM extension, and
+        // this model's morph dictionary is numeric — the authoritative
+        // group -> target-index map lives in blendShapeMaster).
+        var ab = await (await fetch(vrmUrl)).arrayBuffer();
+        if (token !== rb.token) return false;
+        var dv = new DataView(ab);
+        var jsonLen = dv.getUint32(12, true);
+        var vrmJson = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 20, jsonLen)));
+        var gltf = await new Promise(function (res, rej) {
+          new THREE.GLTFLoader().parse(ab, '', res, rej);
+        });
+        if (token !== rb.token) return false;
+        var model = gltf.scene;
+        model.traverse(function (o) { if (o.isSkinnedMesh) o.frustumCulled = false; });
+        var wrap = new THREE.Group();
+        wrap.add(model);
+        if (rb.wrap) { scene.remove(rb.wrap); rbDisposeWrap(rb.wrap); }
+        scene.add(wrap);
+        rb.wrap = wrap;
+        model.updateMatrixWorld(true);
+        function wp(nm) { var b = rbFindBone(model, nm); var v = new THREE.Vector3(); b.getWorldPosition(v); return v; }
+        var ua = wp('J_Bip_L_UpperArm'), fo = wp('J_Bip_L_LowerArm'), ha = wp('J_Bip_L_Hand');
+        var k = (L1 + L2) / (ua.distanceTo(fo) + fo.distanceTo(ha));
+        wrap.scale.setScalar(k);
+        wrap.updateMatrixWorld(true);
+        var sL = wp('J_Bip_L_UpperArm'), sR = wp('J_Bip_R_UpperArm');
+        var mid = sL.add(sR).multiplyScalar(0.5);
+        wrap.position.set(-mid.x, SHOULDER_Y - mid.y + 0.03, -mid.z);
+        wrap.updateMatrixWorld(true);
+        var pairs = [];
+        vrmDriverList().forEach(function (dp) {
+          var bone = rbFindBone(model, dp[1]);
+          var d0 = rbDriverRest && rbDriverRest.get(dp[0]);
+          if (!bone || !d0) return;
+          pairs.push({ driver: dp[0], bone: bone, d0inv: d0.clone().invert(), w0: bone.getWorldQuaternion(new THREE.Quaternion()) });
+        });
+        if (!pairs.length) throw new Error('no vrm bones paired');
+        vrmFace = null;
+        try {
+          var groups = vrmJson.extensions.VRM.blendShapeMaster.blendShapeGroups || [];
+          var faceObj = null, richest = null, richestN = 0;
+          model.traverse(function (o) {
+            if (o.morphTargetInfluences) {
+              if (o.name === 'Face') faceObj = o;
+              if (o.morphTargetInfluences.length > richestN) { richestN = o.morphTargetInfluences.length; richest = o; }
+            }
+          });
+          faceObj = faceObj || richest;
+          var idx = {};
+          groups.forEach(function (g) {
+            var key = (g.presetName && g.presetName !== 'unknown') ? g.presetName : String(g.name || '').toLowerCase();
+            (g.binds || []).forEach(function (b) { if (b.mesh === 0 && idx[key] == null) idx[key] = b.index; });
+          });
+          if (faceObj && idx.blink != null) vrmFace = { mesh: faceObj, idx: idx };
+        } catch (e) { vrmFace = null; }
+        rb.pairs = pairs; rb.model = 'vrm'; rb.ready = true;
+        rig.visible = false;
+        camera.position.set(0, 0.30, 2.1);
+        camera.lookAt(0, 0.20, 0);
+        return true;
+      } catch (e) {
+        return false; // stay on the procedural avatar
+      }
+    }
+
     if (rbMode) {
       rig.visible = false; // procedural rig drives invisibly; RB appears on load
     }
@@ -1142,6 +1267,7 @@
       torso.rotation.z = Math.sin(now / 1000 * 0.7) * 0.012;
       headG.rotation.y = Math.sin(now / 1000 * 0.5) * 0.05;
       headG.rotation.z = Math.sin(now / 1000 * 0.9) * 0.03;
+      vrmApplyFace();
       renderer.render(scene, camera);
     }
 
@@ -1305,12 +1431,17 @@
       buildHair(a.hairStyle);
       buildOutfit();
       buildArms();
-      if (rbMode) {
-        // Fresh driver arm objects: recapture REST, then (re)load the
-        // Rocketbox model for this avatar. Synchronous capture first, so no
-        // frame renders with a half-built rig.
+      if (vrmMode && avatarKey === 'nia') {
+        // Fresh driver arm objects: recapture REST, then load the VRM
+        // anime model. Synchronous capture first, so no frame renders
+        // with a half-built rig.
+        rbCaptureDriverRest();
+        vrmLoad();
+      } else if (rbMode) {
         rbCaptureDriverRest();
         rbLoad(rbModelFor(avatarKey));
+      } else if (vrmMode) {
+        vrmUnload();
       }
     }
 

@@ -1005,6 +1005,7 @@
         model.traverse(function (o) { if (o.isSkinnedMesh) o.frustumCulled = false; });
         var wrap = new THREE.Group();
         wrap.add(model);
+        wrap.rotation.y = Math.PI; // the VRM loads facing away; turn her to the viewer
         if (rb.wrap) { scene.remove(rb.wrap); rbDisposeWrap(rb.wrap); }
         scene.add(wrap);
         rb.wrap = wrap;
@@ -1018,6 +1019,31 @@
         var mid = sL.add(sR).multiplyScalar(0.5);
         wrap.position.set(-mid.x, SHOULDER_Y - mid.y + 0.03, -mid.z);
         wrap.updateMatrixWorld(true);
+        // Rest-pose correction: the VRM bind pose is a strict T-pose, but
+        // the retarget transfers deltas measured from the driver REST pose
+        // (arms relaxed, hands low in front of the body). Pre-aim the
+        // model's arm bones at the driver's rest directions BEFORE the
+        // pair rest-quaternions are captured below, so idle reads as a
+        // natural stance and signs land in front of the body instead of
+        // riding on top of a T-pose with the hands out of frame.
+        function aimBone(boneName, childName, dx, dy, dz) {
+          var b = rbFindBone(model, boneName), c = rbFindBone(model, childName);
+          if (!b || !c || !b.parent) return;
+          model.updateMatrixWorld(true);
+          var bp = new THREE.Vector3(), cp = new THREE.Vector3();
+          b.getWorldPosition(bp); c.getWorldPosition(cp);
+          var curDir = cp.sub(bp).normalize();
+          var want = new THREE.Vector3(dx, dy, dz).normalize();
+          var q = new THREE.Quaternion().setFromUnitVectors(curDir, want);
+          var bw = b.getWorldQuaternion(new THREE.Quaternion());
+          var pw = b.parent.getWorldQuaternion(new THREE.Quaternion());
+          b.quaternion.copy(pw.invert().multiply(q).multiply(bw));
+          model.updateMatrixWorld(true);
+        }
+        aimBone('J_Bip_R_UpperArm', 'J_Bip_R_LowerArm', 0.06, -1, 0.18);
+        aimBone('J_Bip_R_LowerArm', 'J_Bip_R_Hand', 0.12, -0.80, 0.55);
+        aimBone('J_Bip_L_UpperArm', 'J_Bip_L_LowerArm', -0.06, -1, 0.18);
+        aimBone('J_Bip_L_LowerArm', 'J_Bip_L_Hand', -0.12, -0.80, 0.55);
         var pairs = [];
         vrmDriverList().forEach(function (dp) {
           var bone = rbFindBone(model, dp[1]);
@@ -1046,8 +1072,8 @@
         } catch (e) { vrmFace = null; }
         rb.pairs = pairs; rb.model = 'vrm'; rb.ready = true;
         rig.visible = false;
-        camera.position.set(0, 0.30, 2.1);
-        camera.lookAt(0, 0.20, 0);
+        camera.position.set(0, 0.30, 2.9);
+        camera.lookAt(0, 0.22, 0);
         return true;
       } catch (e) {
         return false; // stay on the procedural avatar

@@ -964,7 +964,7 @@
     }
 
     function vrmUnload() {
-      vrmHairPanels.forEach(function (m) { scene.remove(m); if (m.geometry) m.geometry.dispose(); });
+      vrmHairPanels.forEach(function (m) { if (m.parent) m.parent.remove(m); if (m.geometry) m.geometry.dispose(); });
       vrmHairPanels = [];
       if (rb && rb.wrap) { scene.remove(rb.wrap); rbDisposeWrap(rb.wrap); rb.wrap = null; }
       if (rb) { rb.pairs = []; rb.ready = false; rb.model = null; }
@@ -1075,25 +1075,51 @@
         } catch (e) { vrmFace = null; }
         rb.pairs = pairs; rb.model = 'vrm'; rb.ready = true;
         rig.visible = false;
+        // Idle-life anchors: wrap base height for breathing, head/neck
+        // bind poses for the micro-sway in tick.
+        rb.baseY = wrap.position.y;
+        rb.headBone = rbFindBone(model, 'J_Bip_Head');
+        rb.headBind = rb.headBone ? rb.headBone.quaternion.clone() : null;
+        rb.neckBone = rbFindBone(model, 'J_Bip_Neck');
+        rb.neckBind = rb.neckBone ? rb.neckBone.quaternion.clone() : null;
         // Long hair: the base model's own hair is a jaw-length bob, but
         // the owner's sample has long hair past the shoulders. Add three
-        // toon-shaded hair panels (back + two sides) in world space,
-        // hung from the crown — the VRM head bone is not driven by the
-        // signer, so world-anchored panels stay registered to the head.
+        // toon-shaded hair panels (back + two sides) with a painted
+        // strand texture, hung from the crown and attached to the wrap
+        // so they ride her breathing. The head bone itself is not driven
+        // by the signer (only a micro-sway), so panels stay registered.
         try {
-          vrmHairPanels.forEach(function (m) { scene.remove(m); if (m.geometry) m.geometry.dispose(); });
+          vrmHairPanels.forEach(function (m) { if (m.parent) m.parent.remove(m); if (m.geometry) m.geometry.dispose(); });
           vrmHairPanels = [];
           var headW = wp('J_Bip_Head'), neckW = wp('J_Bip_Neck');
           var headR = neckW ? headW.distanceTo(neckW) : 0.10;
           var crownY = headW.y + headR * 0.95;
-          function hairPanel(cx, topY, cz, w0, len, bowZ, rotY) {
-            var rows = 9, pos = [], idx = [];
+          var hairTex = null;
+          try {
+            var hc = document.createElement('canvas'); hc.width = 256; hc.height = 256;
+            var hx = hc.getContext('2d');
+            hx.fillStyle = '#2a1a10'; hx.fillRect(0, 0, 256, 256);
+            for (var si = 0; si < 340; si++) {
+              var sx0 = Math.random() * 256;
+              hx.strokeStyle = Math.random() < 0.16 ? 'rgba(122,84,50,0.55)'
+                : (Math.random() < 0.5 ? 'rgba(10,5,3,0.5)' : 'rgba(52,32,18,0.5)');
+              hx.lineWidth = 1 + Math.random() * 2.2;
+              hx.beginPath(); hx.moveTo(sx0, -8);
+              hx.bezierCurveTo(sx0 + (Math.random() * 10 - 5), 84, sx0 + (Math.random() * 10 - 5), 170, sx0 + (Math.random() * 14 - 7), 264);
+              hx.stroke();
+            }
+            hairTex = new THREE.CanvasTexture(hc);
+          } catch (e) { hairTex = null; }
+          function hairPanel(cx, topY, cz, w0, len, bowZ, seed) {
+            var rows = 9, pos = [], idx = [], uvs = [];
             for (var i = 0; i <= rows; i++) {
               var t = i / rows;
-              var y = topY - t * len;
-              var hw = (w0 / 2) * (1 - 0.42 * t);
-              var zc = cz + Math.sin(t * Math.PI) * bowZ + Math.sin(t * 6.0) * 0.006;
-              pos.push(cx - hw, y, zc - 0.012, cx, y, zc, cx + hw, y, zc - 0.012);
+              var y = topY - t * len - (i === rows ? 0.014 : 0);
+              var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
+              var hw = (w0 / 2) * (1 - 0.42 * t) * jit;
+              var zc = cz + Math.sin(t * Math.PI) * bowZ + Math.sin(t * 6.0 + seed) * 0.006;
+              pos.push(cx - hw, y + (i === rows ? 0.012 : 0), zc - 0.012, cx, y, zc, cx + hw, y + (i === rows ? 0.012 : 0), zc - 0.012);
+              uvs.push(0, 1 - t, 0.5, 1 - t, 1, 1 - t);
               if (i < rows) {
                 var a = i * 3, b = a + 3;
                 idx.push(a, b, a + 1, a + 1, b, b + 1, a + 1, b + 1, a + 2, a + 2, b + 1, b + 2);
@@ -1101,28 +1127,21 @@
             }
             var geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
             geo.setIndex(idx);
             geo.computeVertexNormals();
-            var mat = std(0x20140e);
+            var mat = std(hairTex ? 0xffffff : 0x20140e);
+            if (hairTex) mat.map = hairTex;
             mat.side = THREE.DoubleSide;
             var mesh = new THREE.Mesh(geo, mat);
-            mesh.rotation.y = rotY || 0;
-            if (rotY) { // rotate about the head's vertical axis, not the panel's own origin
-              var pivot = new THREE.Group();
-              pivot.position.set(headW.x, 0, headW.z);
-              mesh.position.set(-headW.x, 0, -headW.z);
-              pivot.add(mesh); pivot.rotation.y = rotY;
-              scene.add(pivot);
-              vrmHairPanels.push(pivot);
-              return pivot;
-            }
             scene.add(mesh);
+            wrap.attach(mesh); // keep world placement, ride the wrap from here
             vrmHairPanels.push(mesh);
             return mesh;
           }
-          hairPanel(headW.x, crownY, headW.z - headR * 0.72, 0.235, 0.47, -0.020, 0);
-          hairPanel(headW.x - headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 0.10);
-          hairPanel(headW.x + headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, -0.10);
+          hairPanel(headW.x, crownY, headW.z - headR * 0.72, 0.235, 0.47, -0.020, 1.7);
+          hairPanel(headW.x - headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 4.2);
+          hairPanel(headW.x + headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 7.9);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the
@@ -1208,7 +1227,7 @@
       arm.thumb.base.rotation.x = -c.T * 0.85;
       arm.thumb.mid.rotation.x = -c.T * 0.7;
       palmQuat(st.palm, arm.side, _pqT);
-      arm.wrist.quaternion.slerp(_pqT, 0.35);
+      arm.wrist.quaternion.slerp(_pqT, 0.45);
       if (st.wristTwist) arm.wrist.rotateZ(st.wristTwist);
     }
 
@@ -1295,28 +1314,54 @@
         var dx = from[s].t[0] - to[s].t[0], dy = from[s].t[1] - to[s].t[1], dz = from[s].t[2] - to[s].t[2];
         d = Math.max(d, Math.sqrt(dx * dx + dy * dy + dz * dz));
       });
-      return clamp(180 + d * 700, 200, 480);
+      // Longer glides than the old 180+700d/480 cap: real signing hands
+      // travel, they don't teleport between poses.
+      return clamp(240 + d * 860, 260, 620);
     }
 
+    var arcApplied = { R: 0, L: 0 }; // per-frame arc lift, removed after applyHand
     function tick(now) {
       if (destroyed) return;
       requestAnimationFrame(tick);
       if (!active && queue.length) {
         var item = queue.shift();
         var target = itemTarget(item);
-        active = { item: item, target: target, phase: 'move', start: now, dur: moveDur(cur, target), holdMs: item.holdMs || 300 };
+        active = { item: item, target: target, phase: 'move', start: now, dur: moveDur(cur, target),
+                   holdMs: item.holdMs || 300, fromR: cur.R.t.slice(), fromL: cur.L.t.slice(), nextTarget: null };
         faceTarget = target.face;
       }
-      var k = 0.22; // easing rate toward target each frame
+      arcApplied.R = 0; arcApplied.L = 0;
       if (active) {
         var el = now - active.start;
         if (active.phase === 'move') {
           var t = sstep(el / active.dur);
           blendPose(cur, active.target, t);
+          // Arc lift: hands bow outward toward the viewer mid-travel
+          // (the sign data's own `arc` field where authored, a gentle
+          // default otherwise) instead of sliding in straight lines.
+          var lift = Math.sin(Math.PI * Math.min(1, el / active.dur));
+          var arcBase = (active.item.wp && typeof active.item.wp.arc === 'number') ? active.item.wp.arc : 0.05;
+          [['R', active.fromR], ['L', active.fromL]].forEach(function (pr) {
+            var s = pr[0], from = pr[1], tg = active.target[s].t;
+            var dd = Math.sqrt(Math.pow(tg[0] - from[0], 2) + Math.pow(tg[1] - from[1], 2) + Math.pow(tg[2] - from[2], 2));
+            if (dd > 0.04) {
+              arcApplied[s] = clamp(arcBase + dd * 0.12, 0, 0.13) * lift;
+              cur[s].t[2] += arcApplied[s];
+            }
+          });
           if (t >= 1) { active.phase = 'hold'; active.start = now; }
         } else {
-          // hold: keep target, run letter motion (J twist, Z draw)
-          blendPose(cur, active.target, 1);
+          // Hold, with co-articulation: in the second half of the hold,
+          // start gliding toward the next queued pose so signs flow
+          // into each other instead of stopping dead between items —
+          // the single biggest difference between robotic and natural.
+          var pre = queue.length && el > active.holdMs * 0.5;
+          if (!pre) {
+            blendPose(cur, active.target, 1);
+          } else {
+            if (!active.nextTarget) active.nextTarget = itemTarget(queue[0]);
+            blendPose(cur, active.nextTarget, sstep((el - active.holdMs * 0.5) / (active.holdMs * 0.5)) * 0.85);
+          }
           var mo = active.target.R.motion;
           cur.R.wristTwist = 0;
           if (mo) {
@@ -1338,6 +1383,7 @@
       applyHand(armR, cur.R);
       cur.R.wristTwist = 0;
       applyHand(armL, cur.L);
+      cur.R.t[2] -= arcApplied.R; cur.L.t[2] -= arcApplied.L;
       applyFace(faceTarget);
       rbRetarget(); // Rocketbox: transfer driver deltas to the humanoid (no-op when off)
       // blink: shared scale factor consumed by applyFace below
@@ -1348,6 +1394,22 @@
       torso.rotation.z = Math.sin(now / 1000 * 0.7) * 0.012;
       headG.rotation.y = Math.sin(now / 1000 * 0.5) * 0.05;
       headG.rotation.z = Math.sin(now / 1000 * 0.9) * 0.03;
+      // VRM idle life: the model must breathe and sway too, or she reads
+      // as a mannequin between signs. Subtle wrap bob + head micro-sway
+      // around the bind pose captured at load.
+      if (rb && rb.model === 'vrm' && rb.wrap && typeof rb.baseY === 'number') {
+        var bt = now / 1000;
+        rb.wrap.position.y = rb.baseY + Math.sin(bt * 1.4) * 0.0035;
+        rb.wrap.rotation.z = Math.sin(bt * 0.7) * 0.004;
+        if (rb.headBone && rb.headBind) {
+          _q1.setFromEuler(new THREE.Euler(Math.sin(bt * 0.43) * 0.03, Math.sin(bt * 0.31) * 0.05, Math.sin(bt * 0.53) * 0.02));
+          rb.headBone.quaternion.copy(rb.headBind).multiply(_q1);
+        }
+        if (rb.neckBone && rb.neckBind) {
+          _q1.setFromEuler(new THREE.Euler(Math.sin(bt * 0.43) * 0.015, Math.sin(bt * 0.31) * 0.025, Math.sin(bt * 0.53) * 0.01));
+          rb.neckBone.quaternion.copy(rb.neckBind).multiply(_q1);
+        }
+      }
       vrmApplyFace();
       renderer.render(scene, camera);
     }
@@ -1421,7 +1483,7 @@
             var fsLang = fingerspellLangFor(language);
             for (var c = 0; c < word.length; c++) {
               var lp = fsLang ? letterPreset(word[c], fsLang) : { preset: null };
-              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 380, fsLang)); }
+              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 340, fsLang)); }
               else { noteMissing(rep, 'missingLetters', word[c]); items.push(missingLetterItem(word[c])); }
             }
           }
@@ -1429,7 +1491,7 @@
           var txt = p.text.replace(/[^A-Z0-9]/g, '');
           for (var d = 0; d < txt.length; d++) {
             var lp2 = letterPreset(txt[d], p.lang);
-            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 380, p.lang)); }
+            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 340, p.lang)); }
             else { noteMissing(rep, 'missingLetters', txt[d]); items.push(missingLetterItem(txt[d], 200)); }
           }
         } else {
@@ -1471,7 +1533,7 @@
       ['I', 'M', 'R', 'P', 'T', 'spread'].forEach(function (kk) {
         if (typeof flat[kk] !== 'number' || !isFinite(flat[kk])) flat[kk] = 0;
       });
-      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: flat, holdMs: holdMs || 380, face: 'neutral' };
+      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: flat, holdMs: holdMs || 340, face: 'neutral' };
       if (lp.preset && lp.preset.support) {
         var sup = lp.preset.support;
         var curl = sup === 'fist' ? shapeFor('fist') : shapeFor('flat');

@@ -1195,8 +1195,9 @@
               var y = topY - t * len - (i === rows ? 0.014 : 0);
               var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
               var hw = (w0 / 2) * (1 - 0.42 * t) * jit;
-              var zc = cz + Math.sin(t * Math.PI) * bowZ + Math.sin(t * 6.0 + seed) * 0.006;
-              pos.push(cx - hw, y + (i === rows ? 0.012 : 0), zc - 0.012, cx, y, zc, cx + hw, y + (i === rows ? 0.012 : 0), zc - 0.012);
+              var zc = cz + Math.sin(t * Math.PI) * bowZ + Math.sin(t * 7.5 + seed) * 0.011;
+              var cxr = cx + Math.sin(t * 5.0 + seed) * 0.008; // gentle wavy silhouette
+              pos.push(cxr - hw, y + (i === rows ? 0.012 : 0), zc - 0.012, cxr, y, zc, cxr + hw, y + (i === rows ? 0.012 : 0), zc - 0.012);
               uvs.push(0, 1 - t, 0.5, 1 - t, 1, 1 - t);
               if (i < rows) {
                 var a = i * 3, b = a + 3;
@@ -1217,9 +1218,13 @@
             vrmHairPanels.push(mesh);
             return mesh;
           }
-          hairPanel(headW.x, crownY, headW.z - headR * 0.72, 0.235, 0.47, -0.020, 1.7);
-          hairPanel(headW.x - headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 4.2);
-          hairPanel(headW.x + headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 7.9);
+          hairPanel(headW.x, crownY, headW.z - headR * 0.72, 0.30, 0.56, -0.030, 1.7);
+          hairPanel(headW.x - headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.105, 0.52, 0.010, 4.2);
+          hairPanel(headW.x + headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.105, 0.52, 0.010, 7.9);
+          // Front falls over the shoulders, like the sample's hair —
+          // without these the length hides behind her from the front.
+          hairPanel(headW.x - headR * 0.88, crownY - 0.02, headW.z + headR * 0.60, 0.085, 0.50, 0.022, 2.6);
+          hairPanel(headW.x + headR * 0.88, crownY - 0.02, headW.z + headR * 0.60, 0.085, 0.50, 0.022, 9.4);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

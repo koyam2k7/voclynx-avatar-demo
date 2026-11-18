@@ -1169,21 +1169,30 @@
           var headW = wp('J_Bip_C_Head'), neckW = wp('J_Bip_C_Neck');
           var headR = neckW ? headW.distanceTo(neckW) : 0.10;
           var crownY = headW.y + headR * 0.95;
-          // Flat near-black toon colour, same family as the procedural
-          // avatars' hair (proven to render dark in this lighting). The
-          // earlier canvas strand texture rendered tan on the model and
-          // read as boards; anime hair is smooth-shaded anyway — shape
-          // and placement carry it.
-          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color) {
+          // Use the model's OWN hair material for the panels (cloned from
+          // the Hair mesh): same texture, same shading response as the
+          // bob, so panels and bob are one hair colour by construction.
+          // Every flat colour tried rendered lighter than the bob under
+          // this scene's lights; matching the material removes the
+          // two-tone step entirely.
+          var hairMat = null;
+          model.traverse(function (o) {
+            if (!hairMat && o.isMesh && /hair/i.test(o.name || '')) {
+              var hm = Array.isArray(o.material) ? o.material[0] : o.material;
+              if (hm) { hairMat = hm.clone(); hairMat.side = THREE.DoubleSide; }
+            }
+          });
+          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch) {
             var rows = 9, pos = [], idx = [], uvs = [];
             for (var i = 0; i <= rows; i++) {
               var t = i / rows;
               var y = topY - t * len - (i === rows ? 0.014 : 0);
               var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
               var hw = (w0 / 2) * (1 - 0.42 * t) * jit;
+              if (pinch) hw *= 1 - pinch * Math.max(0, 1 - t * 3); // narrow top, tucks behind the head
               var zc = cz + Math.sin(t * Math.PI) * bowZ + t * (drapeZ || 0) + Math.sin(t * 7.5 + seed) * 0.011;
               var cxr = cx + Math.sin(t * 5.0 + seed) * 0.008; // gentle wavy silhouette
-              pos.push(cxr - hw, y + (i === rows ? 0.012 : 0), zc - 0.012, cxr, y, zc, cxr + hw, y + (i === rows ? 0.012 : 0), zc - 0.012);
+              pos.push(cxr - hw, y + (i === rows ? 0.030 : 0), zc - 0.012, cxr, y, zc, cxr + hw, y + (i === rows ? 0.030 : 0), zc - 0.012);
               uvs.push(0, 1 - t, 0.5, 1 - t, 1, 1 - t);
               if (i < rows) {
                 var a = i * 3, b = a + 3;
@@ -1195,7 +1204,7 @@
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
             geo.setIndex(idx);
             geo.computeVertexNormals();
-            var mat = std(color || 0x17120e);
+            var mat = hairMat || std(color || 0x17120e);
             mat.side = THREE.DoubleSide;
             var mesh = new THREE.Mesh(geo, mat);
             scene.add(mesh);
@@ -1207,13 +1216,14 @@
           // the torso volume (back z < -0.09, front z > +0.13 at chest
           // height, sides beyond the neck silhouette) or the body hides
           // them and only neck-high slivers show.
-          hairPanel(headW.x, crownY, headW.z - headR * 1.15, 0.30, 0.60, -0.010, 1.7, -0.055, 0x17120e);
-          hairPanel(headW.x - headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 4.2, 0.030, 0x17120e);
-          hairPanel(headW.x + headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 7.9, 0.030, 0x17120e);
+          hairPanel(headW.x, crownY - headR * 0.5, headW.z - headR * 1.15, 0.24, 0.60, -0.010, 1.7, -0.055, 0x17120e, 0.35);
+          hairPanel(headW.x - headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 4.2, 0.030, 0x17120e, 0);
+          hairPanel(headW.x + headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 7.9, 0.030, 0x17120e, 0);
           // Front falls over the shoulders, like the sample's hair —
           // without these the length hides behind her from the front.
-          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 2.6, 0.100, 0x20150d);
-          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 9.4, 0.100, 0x20150d);
+          // Wide enough out to lie over the orange fabric, not in the V.
+          hairPanel(headW.x - headR * 1.05, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 2.6, 0.100, 0x20150d, 0);
+          hairPanel(headW.x + headR * 1.05, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 9.4, 0.100, 0x20150d, 0);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

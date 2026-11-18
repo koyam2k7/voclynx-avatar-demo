@@ -28,12 +28,31 @@
     FOR: 1, WITH: 1, IT: 1, ITS: 1, THIS: 1, THAT: 1, UM: 1, UH: 1,
   };
   function localGloss(text) {
-    return String(text || '')
+    var words = String(text || '')
       .toUpperCase()
       .replace(/[^A-Z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(function (w) { return w && !STOPWORDS[w]; })
-      .slice(0, 12);
+      .filter(function (w) { return w && !STOPWORDS[w]; });
+    // Merge adjacent words into hyphenated glosses the sign library
+    // actually has (THANK YOU -> THANK-YOU, GOOD MORNING -> GOOD-MORNING)
+    // — otherwise courtesy phrases get fingerspelled letter by letter.
+    var known = {};
+    try {
+      var data = window.VOCLYNX_SIGNS3D || {};
+      Object.keys(data).forEach(function (lang) {
+        Object.keys(data[lang] || {}).forEach(function (k) { known[k] = 1; });
+      });
+    } catch (e) { /* merging is a bonus; plain words still sign */ }
+    var out = [];
+    for (var i = 0; i < words.length; i++) {
+      if (i + 1 < words.length && known[words[i] + '-' + words[i + 1]]) {
+        out.push(words[i] + '-' + words[i + 1]);
+        i++;
+      } else {
+        out.push(words[i]);
+      }
+    }
+    return out.slice(0, 12);
   }
 
   /* ---------------- backend gloss (progressive enhancement) ---------------- */

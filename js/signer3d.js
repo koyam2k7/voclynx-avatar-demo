@@ -942,6 +942,7 @@
     var vrmMode = !!(opts && opts.vrm);
     var vrmUrl = vrmMode ? String(opts.vrm.url || 'models/anime/nia.vrm') : '';
     var vrmFace = null; // { mesh, idx: { morphSuffix -> influence index } }
+    var vrmHairPanels = []; // long-hair panels added for the sample look
 
     function vrmDriverList() {
       var list = [];
@@ -963,6 +964,8 @@
     }
 
     function vrmUnload() {
+      vrmHairPanels.forEach(function (m) { scene.remove(m); if (m.geometry) m.geometry.dispose(); });
+      vrmHairPanels = [];
       if (rb && rb.wrap) { scene.remove(rb.wrap); rbDisposeWrap(rb.wrap); rb.wrap = null; }
       if (rb) { rb.pairs = []; rb.ready = false; rb.model = null; }
       vrmFace = null;
@@ -1072,8 +1075,60 @@
         } catch (e) { vrmFace = null; }
         rb.pairs = pairs; rb.model = 'vrm'; rb.ready = true;
         rig.visible = false;
-        camera.position.set(0, 0.30, 2.9);
-        camera.lookAt(0, 0.22, 0);
+        // Long hair: the base model's own hair is a jaw-length bob, but
+        // the owner's sample has long hair past the shoulders. Add three
+        // toon-shaded hair panels (back + two sides) in world space,
+        // hung from the crown — the VRM head bone is not driven by the
+        // signer, so world-anchored panels stay registered to the head.
+        try {
+          vrmHairPanels.forEach(function (m) { scene.remove(m); if (m.geometry) m.geometry.dispose(); });
+          vrmHairPanels = [];
+          var headW = wp('J_Bip_Head'), neckW = wp('J_Bip_Neck');
+          var headR = neckW ? headW.distanceTo(neckW) : 0.10;
+          var crownY = headW.y + headR * 0.95;
+          function hairPanel(cx, topY, cz, w0, len, bowZ, rotY) {
+            var rows = 9, pos = [], idx = [];
+            for (var i = 0; i <= rows; i++) {
+              var t = i / rows;
+              var y = topY - t * len;
+              var hw = (w0 / 2) * (1 - 0.42 * t);
+              var zc = cz + Math.sin(t * Math.PI) * bowZ + Math.sin(t * 6.0) * 0.006;
+              pos.push(cx - hw, y, zc - 0.012, cx, y, zc, cx + hw, y, zc - 0.012);
+              if (i < rows) {
+                var a = i * 3, b = a + 3;
+                idx.push(a, b, a + 1, a + 1, b, b + 1, a + 1, b + 1, a + 2, a + 2, b + 1, b + 2);
+              }
+            }
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setIndex(idx);
+            geo.computeVertexNormals();
+            var mat = std(0x20140e);
+            mat.side = THREE.DoubleSide;
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.rotation.y = rotY || 0;
+            if (rotY) { // rotate about the head's vertical axis, not the panel's own origin
+              var pivot = new THREE.Group();
+              pivot.position.set(headW.x, 0, headW.z);
+              mesh.position.set(-headW.x, 0, -headW.z);
+              pivot.add(mesh); pivot.rotation.y = rotY;
+              scene.add(pivot);
+              vrmHairPanels.push(pivot);
+              return pivot;
+            }
+            scene.add(mesh);
+            vrmHairPanels.push(mesh);
+            return mesh;
+          }
+          hairPanel(headW.x, crownY, headW.z - headR * 0.72, 0.235, 0.47, -0.020, 0);
+          hairPanel(headW.x - headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, 0.10);
+          hairPanel(headW.x + headR * 0.98, crownY - 0.01, headW.z + headR * 0.10, 0.080, 0.43, 0.010, -0.10);
+        } catch (e) { /* hair panels are cosmetic; never fail the load */ }
+        // Portrait framing like the sample video: head, torso and the
+        // signing space fill the frame (the old full-body shot made the
+        // hands tiny and the whole figure read as a doll).
+        camera.position.set(0, 0.32, 1.45);
+        camera.lookAt(0, 0.26, 0);
         return true;
       } catch (e) {
         return false; // stay on the procedural avatar
@@ -1301,7 +1356,12 @@
       ['R', 'L'].forEach(function (s) {
         for (var i = 0; i < 3; i++) dst[s].t[i] = lerp(dst[s].t[i], src[s].t[i], t);
         var keys = ['I', 'M', 'R', 'P', 'T', 'spread'];
-        keys.forEach(function (kk) { dst[s].curl[kk] = lerp(dst[s].curl[kk], src[s].curl[kk], t); });
+        keys.forEach(function (kk) {
+          // Never let a malformed target poison the live pose with NaN.
+          if (typeof src[s].curl[kk] === 'number' && isFinite(src[s].curl[kk])) {
+            dst[s].curl[kk] = lerp(dst[s].curl[kk], src[s].curl[kk], t);
+          }
+        });
         if (t >= 1) dst[s].palm = src[s].palm;
         dst[s].motion = src[s].motion || null;
       });
@@ -1401,7 +1461,17 @@
     }
 
     function letterItem(ch, lp, holdMs, spellLang) {
-      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: lp.preset, holdMs: holdMs || 380, face: 'neutral' };
+      // Preset schemas differ by alphabet: ASL presets are flat
+      // ({I,M,R,P,T,spread}); BSL/PSL presets nest the curls under .shape
+      // ({shape:{...}, support, supportPos}). Normalize to the flat form
+      // here — reading .I off a nested preset yields undefined curls,
+      // which used to poison the live pose with NaN and freeze the hand.
+      var raw = lp.preset || {};
+      var flat = raw.shape ? Object.assign({}, raw.shape) : Object.assign({}, raw);
+      ['I', 'M', 'R', 'P', 'T', 'spread'].forEach(function (kk) {
+        if (typeof flat[kk] !== 'number' || !isFinite(flat[kk])) flat[kk] = 0;
+      });
+      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: flat, holdMs: holdMs || 380, face: 'neutral' };
       if (lp.preset && lp.preset.support) {
         var sup = lp.preset.support;
         var curl = sup === 'fist' ? shapeFor('fist') : shapeFor('flat');

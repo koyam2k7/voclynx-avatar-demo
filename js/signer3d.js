@@ -1182,17 +1182,19 @@
               if (hm) { hairMat = hm.clone(); hairMat.side = THREE.DoubleSide; }
             }
           });
-          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ) {
+          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp) {
             var rows = 9, pos = [], idx = [], uvs = [];
             var cols = [-1, -0.5, 0, 0.5, 1];
             for (var i = 0; i <= rows; i++) {
               var t = i / rows;
               var yBase = topY - t * len - (i === rows ? 0.014 : 0);
               var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
-              var hw = (w0 / 2) * (1 - 0.42 * t) * jit;
+              var hw = (w0 / 2) * (1 - (taperK || 0.42) * t) * jit;
               if (pinch) hw *= 1 - pinch * Math.max(0, 1 - t * 3); // narrow top, tucks behind the head
               var zc = cz + Math.sin(t * Math.PI) * bowZ + t * (drapeZ || 0) + Math.sin(t * 7.5 + seed) * 0.011;
-              var cxr = cx + Math.sin(t * 5.0 + seed) * 0.008; // gentle wavy silhouette
+              // Gentle S-sway that grows toward the tip, so a strand
+              // curves instead of hanging ruler-straight.
+              var cxr = cx + Math.sin(t * 5.0 + seed) * 0.008 + Math.sin(t * 3.1 + seed * 1.3) * 0.010 * t;
               for (var j = 0; j < cols.length; j++) {
                 var f = cols[j];
                 // Arched top edge: edge columns drop by topArch * f^2 for
@@ -1204,7 +1206,12 @@
                 // wraps around the head/chest instead of lying dead flat.
                 var zz = zc + (wrapZ || 0) * f * f;
                 var yy = yBase - drop + (i === rows && f !== 0 ? 0.030 : 0);
-                pos.push(cxr + f * hw, yy, zz);
+                // Independent edge undulation: each side edge wanders on
+                // its own phase, growing downward — the silhouette reads
+                // as hair strands, not a cut ribbon.
+                var eOff = 0;
+                if (f !== 0 && edgeAmp) eOff = Math.sin(t * 6.0 + seed + (f > 0 ? 2.1 : 0)) * edgeAmp * t * Math.abs(f);
+                pos.push(cxr + f * hw + eOff, yy, zz);
                 uvs.push((f + 1) / 2, 1 - t);
               }
               if (i < rows) {
@@ -1231,14 +1238,27 @@
           // the torso volume (back z < -0.09, front z > +0.13 at chest
           // height, sides beyond the neck silhouette) or the body hides
           // them and only neck-high slivers show.
-          hairPanel(headW.x, crownY - headR * 0.35, headW.z - headR * 1.0, 0.23, 0.60, -0.010, 1.7, -0.050, 0x17120e, 0.30, 0.055, 0.050);
-          hairPanel(headW.x - headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 4.2, 0.030, 0x17120e, 0.15, 0.040, 0.018);
-          hairPanel(headW.x + headR * 1.45, crownY - 0.01, headW.z + headR * 0.25, 0.105, 0.58, 0.012, 7.9, 0.030, 0x17120e, 0.15, 0.040, 0.018);
+          // Hair is built from overlapping STRANDS, not single sheets:
+          // narrow tapered strips with staggered lengths and undulating
+          // edges read as layered hair; one wide sheet reads as a board.
+          // Back: three strands across (centre longest, set slightly back).
+          hairPanel(headW.x - 0.055, crownY - headR * 0.35, headW.z - headR * 1.0, 0.085, 0.56, -0.010, 1.7, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
+          hairPanel(headW.x, crownY - headR * 0.35, headW.z - headR * 1.0 - 0.005, 0.085, 0.62, -0.010, 3.3, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
+          hairPanel(headW.x + 0.055, crownY - headR * 0.35, headW.z - headR * 1.0, 0.085, 0.56, -0.010, 5.1, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
+          // Sides: two strands each, tops tucked up under the bob and
+          // pinched so they emerge from beneath it instead of butting
+          // against it (kills the step/notch at the jaw line).
+          hairPanel(headW.x - headR * 1.30, crownY + 0.01, headW.z + headR * 0.25, 0.062, 0.58, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
+          hairPanel(headW.x - headR * 1.52, crownY + 0.01, headW.z + headR * 0.05, 0.062, 0.50, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
+          hairPanel(headW.x + headR * 1.30, crownY + 0.01, headW.z + headR * 0.25, 0.062, 0.58, 0.012, 7.9, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
+          hairPanel(headW.x + headR * 1.52, crownY + 0.01, headW.z + headR * 0.05, 0.062, 0.50, 0.012, 9.7, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
           // Front falls over the shoulders, like the sample's hair —
           // without these the length hides behind her from the front.
           // Wide enough out to lie over the orange fabric, not in the V.
-          hairPanel(headW.x - headR * 1.05, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 2.6, 0.100, 0x20150d, 0, 0.022, -0.012);
-          hairPanel(headW.x + headR * 1.05, crownY - 0.02, headW.z + headR * 0.72, 0.088, 0.56, 0.018, 9.4, 0.100, 0x20150d, 0, 0.022, -0.012);
+          hairPanel(headW.x - headR * 0.92, crownY - 0.02, headW.z + headR * 0.72, 0.055, 0.56, 0.018, 2.6, 0.100, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
+          hairPanel(headW.x - headR * 1.22, crownY - 0.02, headW.z + headR * 0.62, 0.050, 0.50, 0.018, 4.4, 0.090, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
+          hairPanel(headW.x + headR * 0.92, crownY - 0.02, headW.z + headR * 0.72, 0.055, 0.56, 0.018, 9.4, 0.100, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
+          hairPanel(headW.x + headR * 1.22, crownY - 0.02, headW.z + headR * 0.62, 0.050, 0.50, 0.018, 11.2, 0.090, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

@@ -1078,9 +1078,9 @@
         // Idle-life anchors: wrap base height for breathing, head/neck
         // bind poses for the micro-sway in tick.
         rb.baseY = wrap.position.y;
-        rb.headBone = rbFindBone(model, 'J_Bip_Head');
+        rb.headBone = rbFindBone(model, 'J_Bip_C_Head');
         rb.headBind = rb.headBone ? rb.headBone.quaternion.clone() : null;
-        rb.neckBone = rbFindBone(model, 'J_Bip_Neck');
+        rb.neckBone = rbFindBone(model, 'J_Bip_C_Neck');
         rb.neckBind = rb.neckBone ? rb.neckBone.quaternion.clone() : null;
         // Long hair: the base model's own hair is a jaw-length bob, but
         // the owner's sample has long hair past the shoulders. Add three
@@ -1091,7 +1091,7 @@
         try {
           vrmHairPanels.forEach(function (m) { if (m.parent) m.parent.remove(m); if (m.geometry) m.geometry.dispose(); });
           vrmHairPanels = [];
-          var headW = wp('J_Bip_Head'), neckW = wp('J_Bip_Neck');
+          var headW = wp('J_Bip_C_Head'), neckW = wp('J_Bip_C_Neck');
           var headR = neckW ? headW.distanceTo(neckW) : 0.10;
           var crownY = headW.y + headR * 0.95;
           var hairTex = null;
@@ -1146,8 +1146,8 @@
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the
         // hands tiny and the whole figure read as a doll).
-        camera.position.set(0, 0.32, 1.45);
-        camera.lookAt(0, 0.26, 0);
+        camera.position.set(0, 0.28, 1.55);
+        camera.lookAt(0, 0.24, 0);
         return true;
       } catch (e) {
         return false; // stay on the procedural avatar

@@ -731,7 +731,7 @@
        load, the procedural avatar is shown instead. */
     var rbMode = !!(opts && opts.rocketbox);
     var rbBase = rbMode ? String(opts.rocketbox.base || 'models/rb').replace(/\/+$/, '') : '';
-    var RB_MODELS = { nia: 'F01', anna: 'F07', marc: 'M16', elias: 'M12' };
+    var RB_MODELS = { nia: 'F07B', anna: 'F07', marc: 'M12', elias: 'M16' };
     var avatarKey = (avatarName && AVATARS[avatarName]) ? avatarName : 'nia';
     var rb = null; // { wrap, pairs, ready, model, token }
 

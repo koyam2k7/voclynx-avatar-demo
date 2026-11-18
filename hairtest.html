@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hair material swatch test</title>
+<style>
+  body { margin: 0; background: #f6ecdd; font-family: sans-serif; }
+  #labels { display: flex; width: 1000px; margin: 4px auto; }
+  #labels div { flex: 1; text-align: center; font-size: 13px; padding: 0 4px; }
+  canvas { display: block; margin: 8px auto; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1000" height="420"></canvas>
+<div id="labels">
+  <div>A: toon + canvas texture (sRGB flag) — current demo</div>
+  <div>B: toon + canvas texture (NO sRGB flag)</div>
+  <div>C: toon flat 0x17120e (procedural hair colour)</div>
+  <div>D: basic + canvas texture (raw texture, unlit)</div>
+  <div>E: standard + canvas texture (sRGB flag)</div>
+</div>
+<script src="vendor/three.min.js"></script>
+<script>
+  var renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.setSize(1000, 420);
+  if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.setClearColor(0xf6ecdd);
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(34, 1000 / 420, 0.1, 50);
+  camera.position.set(0, 0, 3.2);
+  camera.lookAt(0, 0, 0);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9aa5a1, 0.62));
+  var key = new THREE.DirectionalLight(0xfff2e0, 0.85);
+  key.position.set(0.8, 1.5, 1.2);
+  scene.add(key);
+  var fill = new THREE.DirectionalLight(0xd6e8ff, 0.35);
+  fill.position.set(-0.9, 0.5, 0.8);
+  scene.add(fill);
+
+  var gradientMap = new THREE.DataTexture(new Uint8Array([100, 165, 225, 255]), 4, 1, THREE.LuminanceFormat || THREE.RedFormat);
+  gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+  gradientMap.generateMipmaps = false;
+  gradientMap.needsUpdate = true;
+
+  function makeHairCanvas() {
+    var hc = document.createElement('canvas'); hc.width = 256; hc.height = 256;
+    var hx = hc.getContext('2d');
+    hx.fillStyle = '#140b06'; hx.fillRect(0, 0, 256, 256);
+    for (var si = 0; si < 340; si++) {
+      var sx0 = Math.random() * 256;
+      hx.strokeStyle = Math.random() < 0.22 ? 'rgba(140,98,58,0.75)'
+        : (Math.random() < 0.5 ? 'rgba(6,3,2,0.6)' : 'rgba(46,28,15,0.6)');
+      hx.lineWidth = 1 + Math.random() * 3.2;
+      hx.beginPath(); hx.moveTo(sx0, -8);
+      hx.bezierCurveTo(sx0 + (Math.random() * 10 - 5), 84, sx0 + (Math.random() * 10 - 5), 170, sx0 + (Math.random() * 14 - 7), 264);
+      hx.stroke();
+    }
+    return hc;
+  }
+  var hc = makeHairCanvas();
+  var texSRGB = new THREE.CanvasTexture(hc);
+  if (THREE.sRGBEncoding) texSRGB.encoding = THREE.sRGBEncoding;
+  var texLinear = new THREE.CanvasTexture(hc);
+
+  var geo = new THREE.PlaneGeometry(0.52, 0.9);
+  function panel(x, mat) {
+    var m = new THREE.Mesh(geo, mat);
+    m.position.x = x;
+    m.material.side = THREE.DoubleSide;
+    scene.add(m);
+  }
+  panel(-1.15, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap, map: texSRGB }));
+  panel(-0.58, new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: gradientMap, map: texLinear }));
+  panel(0.0, new THREE.MeshToonMaterial({ color: 0x17120e, gradientMap: gradientMap }));
+  panel(0.58, new THREE.MeshBasicMaterial({ map: texSRGB }));
+  panel(1.15, new THREE.MeshStandardMaterial({ map: texSRGB, roughness: 0.9, metalness: 0 }));
+  renderer.render(scene, camera);
+</script>
+</body>
+</html>

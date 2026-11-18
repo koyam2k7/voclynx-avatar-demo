@@ -23,7 +23,7 @@
   // each remaining word as a gloss token. The engine signs the words it
   // knows and fingerspells the rest — no word is silently dropped.
   var STOPWORDS = {
-    THE: 1, A: 1, AN: 1, IS: 1, ARE: 1, WAS: 1, WERE: 1, AM: 1, BE: 1,
+    THE: 1, A: 1, AN: 1, IS: 1, WAS: 1, WERE: 1, AM: 1, BE: 1,
     BEEN: 1, TO: 1, OF: 1, AND: 1, OR: 1, BUT: 1, IN: 1, ON: 1, AT: 1,
     FOR: 1, WITH: 1, IT: 1, ITS: 1, THIS: 1, THAT: 1, UM: 1, UH: 1,
   };

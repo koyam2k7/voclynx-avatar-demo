@@ -1173,17 +1173,20 @@
           try {
             var hc = document.createElement('canvas'); hc.width = 256; hc.height = 256;
             var hx = hc.getContext('2d');
-            hx.fillStyle = '#2a1a10'; hx.fillRect(0, 0, 256, 256);
+            hx.fillStyle = '#140b06'; hx.fillRect(0, 0, 256, 256);
             for (var si = 0; si < 340; si++) {
               var sx0 = Math.random() * 256;
-              hx.strokeStyle = Math.random() < 0.16 ? 'rgba(122,84,50,0.55)'
-                : (Math.random() < 0.5 ? 'rgba(10,5,3,0.5)' : 'rgba(52,32,18,0.5)');
-              hx.lineWidth = 1 + Math.random() * 2.2;
+              hx.strokeStyle = Math.random() < 0.22 ? 'rgba(140,98,58,0.75)'
+                : (Math.random() < 0.5 ? 'rgba(6,3,2,0.6)' : 'rgba(46,28,15,0.6)');
+              hx.lineWidth = 1 + Math.random() * 3.2;
               hx.beginPath(); hx.moveTo(sx0, -8);
               hx.bezierCurveTo(sx0 + (Math.random() * 10 - 5), 84, sx0 + (Math.random() * 10 - 5), 170, sx0 + (Math.random() * 14 - 7), 264);
               hx.stroke();
             }
             hairTex = new THREE.CanvasTexture(hc);
+            // Without sRGB encoding the renderer brightens the canvas
+            // texture and near-black hair renders tan/beige.
+            if (THREE.sRGBEncoding) hairTex.encoding = THREE.sRGBEncoding;
           } catch (e) { hairTex = null; }
           function hairPanel(cx, topY, cz, w0, len, bowZ, seed) {
             var rows = 9, pos = [], idx = [], uvs = [];
@@ -1436,7 +1439,7 @@
             blendPose(cur, active.target, 1);
           } else {
             if (!active.nextTarget) active.nextTarget = itemTarget(queue[0]);
-            blendPose(cur, active.nextTarget, sstep((el - active.holdMs * 0.5) / (active.holdMs * 0.5)) * 0.85);
+            blendPose(cur, active.nextTarget, sstep((el - active.holdMs * 0.5) / (active.holdMs * 0.5)) * 0.65);
           }
           var mo = active.target.R.motion;
           cur.R.wristTwist = 0;
@@ -1544,7 +1547,7 @@
           var r = resolveSign(p.gloss, language);
           if (r.waypoints && !(r.fallback === 'asl' && language !== 'asl')) {
             r.waypoints.forEach(function (wp) {
-              items.push({ type: 'wp', wp: wp, holdMs: wp.hold || (typeof holdMs === 'number' && holdMs > 0 ? Math.min(holdMs, 600) : 320), face: wp.face });
+              items.push({ type: 'wp', wp: wp, holdMs: Math.min(750, Math.round((wp.hold || (typeof holdMs === 'number' && holdMs > 0 ? Math.min(holdMs, 600) : 320)) * 1.3)), face: wp.face });
             });
           } else {
             // Honest fallback: fingerspell the unknown word letter by letter.
@@ -1560,7 +1563,7 @@
             var fsLang = fingerspellLangFor(language);
             for (var c = 0; c < word.length; c++) {
               var lp = fsLang ? letterPreset(word[c], fsLang) : { preset: null };
-              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 340, fsLang)); }
+              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 430, fsLang)); }
               else { noteMissing(rep, 'missingLetters', word[c]); items.push(missingLetterItem(word[c])); }
             }
           }
@@ -1568,7 +1571,7 @@
           var txt = p.text.replace(/[^A-Z0-9]/g, '');
           for (var d = 0; d < txt.length; d++) {
             var lp2 = letterPreset(txt[d], p.lang);
-            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 340, p.lang)); }
+            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 430, p.lang)); }
             else { noteMissing(rep, 'missingLetters', txt[d]); items.push(missingLetterItem(txt[d], 200)); }
           }
         } else {
@@ -1610,7 +1613,7 @@
       ['I', 'M', 'R', 'P', 'T', 'spread'].forEach(function (kk) {
         if (typeof flat[kk] !== 'number' || !isFinite(flat[kk])) flat[kk] = 0;
       });
-      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: flat, holdMs: holdMs || 340, face: 'neutral' };
+      var item = { type: 'letter', ch: ch, lang: lp.lang, preset: flat, holdMs: holdMs || 430, face: 'neutral' };
       if (lp.preset && lp.preset.support) {
         var sup = lp.preset.support;
         var curl = sup === 'fist' ? shapeFor('fist') : shapeFor('flat');

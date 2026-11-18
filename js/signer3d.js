@@ -1182,7 +1182,7 @@
               if (hm) { hairMat = hm.clone(); hairMat.side = THREE.DoubleSide; }
             }
           });
-          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp) {
+          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp, shade) {
             var rows = 9, pos = [], idx = [], uvs = [];
             var cols = [-1, -0.5, 0, 0.5, 1];
             for (var i = 0; i <= rows; i++) {
@@ -1226,7 +1226,16 @@
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
             geo.setIndex(idx);
             geo.computeVertexNormals();
-            var mat = hairMat || std(color || 0x17120e);
+            var mat;
+            if (hairMat) {
+              // Per-strand clone with a slight shade multiplier: subtle
+              // light/dark variation between strands is what makes
+              // separate strands visible as layers instead of one mass.
+              mat = hairMat.clone();
+              if (shade && mat.color) mat.color.multiplyScalar(shade);
+            } else {
+              mat = std(color || 0x17120e);
+            }
             mat.side = THREE.DoubleSide;
             var mesh = new THREE.Mesh(geo, mat);
             scene.add(mesh);
@@ -1241,24 +1250,32 @@
           // Hair is built from overlapping STRANDS, not single sheets:
           // narrow tapered strips with staggered lengths and undulating
           // edges read as layered hair; one wide sheet reads as a board.
-          // Back: three strands across (centre longest, set slightly back).
-          hairPanel(headW.x - 0.055, crownY - headR * 0.35, headW.z - headR * 1.0, 0.085, 0.56, -0.010, 1.7, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
-          hairPanel(headW.x, crownY - headR * 0.35, headW.z - headR * 1.0 - 0.005, 0.085, 0.62, -0.010, 3.3, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
-          hairPanel(headW.x + 0.055, crownY - headR * 0.35, headW.z - headR * 1.0, 0.085, 0.56, -0.010, 5.1, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.55, 0.006);
-          // Sides: two strands each, tops tucked up under the bob and
+          // Back: four narrow strands with real gaps between them —
+          // strands spaced wider than their width, strongly tapered,
+          // with staggered lengths and slight shade steps per strand.
+          hairPanel(headW.x - 0.072, crownY - headR * 0.35, headW.z - headR * 1.0 + 0.004, 0.042, 0.58, -0.010, 1.7, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.93);
+          hairPanel(headW.x - 0.024, crownY - headR * 0.35, headW.z - headR * 1.0, 0.042, 0.64, -0.010, 3.3, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 1.00);
+          hairPanel(headW.x + 0.024, crownY - headR * 0.35, headW.z - headR * 1.0, 0.042, 0.64, -0.010, 5.1, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.97);
+          hairPanel(headW.x + 0.072, crownY - headR * 0.35, headW.z - headR * 1.0 + 0.004, 0.042, 0.58, -0.010, 6.9, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.90);
+          // Sides: three strands each, tops tucked up under the bob and
           // pinched so they emerge from beneath it instead of butting
-          // against it (kills the step/notch at the jaw line).
-          hairPanel(headW.x - headR * 1.30, crownY + 0.01, headW.z + headR * 0.25, 0.062, 0.58, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
-          hairPanel(headW.x - headR * 1.52, crownY + 0.01, headW.z + headR * 0.05, 0.062, 0.50, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
-          hairPanel(headW.x + headR * 1.30, crownY + 0.01, headW.z + headR * 0.25, 0.062, 0.58, 0.012, 7.9, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
-          hairPanel(headW.x + headR * 1.52, crownY + 0.01, headW.z + headR * 0.05, 0.062, 0.50, 0.012, 9.7, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.55, 0.005);
+          // against it (kills the step/notch at the jaw line); lengths
+          // staggered so no two strands end on the same line.
+          hairPanel(headW.x - headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.040, 0.60, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
+          hairPanel(headW.x - headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.040, 0.55, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
+          hairPanel(headW.x - headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.040, 0.48, 0.012, 7.8, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
+          hairPanel(headW.x + headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.040, 0.60, 0.012, 9.6, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
+          hairPanel(headW.x + headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.040, 0.55, 0.012, 11.4, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
+          hairPanel(headW.x + headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.040, 0.48, 0.012, 13.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
           // Front falls over the shoulders, like the sample's hair —
           // without these the length hides behind her from the front.
           // Wide enough out to lie over the orange fabric, not in the V.
-          hairPanel(headW.x - headR * 0.92, crownY - 0.02, headW.z + headR * 0.72, 0.055, 0.56, 0.018, 2.6, 0.100, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
-          hairPanel(headW.x - headR * 1.22, crownY - 0.02, headW.z + headR * 0.62, 0.050, 0.50, 0.018, 4.4, 0.090, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
-          hairPanel(headW.x + headR * 0.92, crownY - 0.02, headW.z + headR * 0.72, 0.055, 0.56, 0.018, 9.4, 0.100, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
-          hairPanel(headW.x + headR * 1.22, crownY - 0.02, headW.z + headR * 0.62, 0.050, 0.50, 0.018, 11.2, 0.090, 0x20150d, 0, 0.022, -0.012, 0.55, 0.005);
+          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 0.78, 0.038, 0.58, 0.018, 2.6, 0.100, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
+          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.70, 0.038, 0.54, 0.018, 4.4, 0.095, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
+          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.58, 0.038, 0.48, 0.018, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
+          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 0.78, 0.038, 0.58, 0.018, 9.4, 0.100, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
+          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.70, 0.038, 0.54, 0.018, 11.2, 0.095, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
+          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.58, 0.038, 0.48, 0.018, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

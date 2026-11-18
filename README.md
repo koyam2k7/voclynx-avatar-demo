@@ -8,8 +8,11 @@ repos — nothing here touches the voclynx setup.**
 
 ## What it shows
 
-- The production Three.js signer engine driving realistic Rocketbox 3D
-  avatar models (Nia / Anna / Marc / Elias).
+- The production Three.js signer engine driving anime-style 3D avatars
+  (cel-shaded, at the owner's direction): **Nia — Black woman**,
+  **Anna — White woman**, **Marc — Black man**, **Elias — White man**.
+  Both hands sign; in the two-handed alphabets (BSL/PSL) the support
+  hand stays up and working for every letter.
 - Hearing side: type, pick a preset line, or use the mic — the line
   appears as a caption and the avatar signs it on the deaf side.
 - Sign languages: ASL / BSL / PSL authored packs; Auslan, ISL, SASL and

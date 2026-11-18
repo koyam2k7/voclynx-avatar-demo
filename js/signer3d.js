@@ -281,15 +281,14 @@
   // woman in black top with badge; Marc = red-haired young man in blue
   // henley; Elias = gray-haired older man in white shirt + maroon vest.
   var AVATARS = {
-    nia:   { skin: 0x9a6a48, hair: 0xd8b25c, hairStyle: 'blondebob', shirt: 0x7a68b8, lip: 0x8a4a3a,
-             female: true, sleeve: 'short', mouthScale: 1.28, eye: 0x4a6a8a, eyeScale: 1.22, smile: 0.45 },
-    anna:  { skin: 0xe8b98e, hair: 0x4a2e1a, hairStyle: 'brownhbob', shirt: 0x232326, lip: 0x9a5a4a,
-             female: true, sleeve: 'long', badge: true, mouthScale: 1.0, eye: 0x4a2e1a, eyeScale: 1.08,
-             collarPattern: true },
-    marc:  { skin: 0xd9a077, hair: 0xb84a1f, hairStyle: 'redcrop', shirt: 0x2e4a7a, lip: 0x8a5a48,
-             female: false, sleeve: 'long', henley: true, stubble: 0.16, mouthScale: 1.0, eye: 0x5a6a3a, eyeScale: 1.0 },
-    elias: { skin: 0x6b4a30, hair: 0xb9bec4, hairStyle: 'graycrop', shirt: 0xe8e4da, lip: 0x5e3226,
-             female: false, sleeve: 'long', vest: 0x6e1f2a, mouthScale: 1.0, eye: 0x2a1a10, eyeScale: 0.95 },
+    nia:   { skin: 0x8a5636, hair: 0x17120e, hairStyle: 'longblack', shirt: 0xe8601c, lip: 0x8a4a3a,
+             female: true, sleeve: 'short', mouthScale: 1.1, eye: 0x2a1a10, eyeScale: 1.35, smile: 0.5 },
+    anna:  { skin: 0xf3c69e, hair: 0x5a3a22, hairStyle: 'longbrown', shirt: 0x1f6f6b, lip: 0xa85a4e,
+             female: true, sleeve: 'long', mouthScale: 1.0, eye: 0x3a5a8a, eyeScale: 1.3 },
+    marc:  { skin: 0x7c4a2c, hair: 0x17120e, hairStyle: 'crop', shirt: 0x2e4a7a, lip: 0x7a4636,
+             female: false, sleeve: 'long', stubble: 0.10, mouthScale: 1.0, eye: 0x2a1a10, eyeScale: 1.2 },
+    elias: { skin: 0xf6cfa8, hair: 0xc9a86a, hairStyle: 'crop', shirt: 0x51606e, lip: 0x9a6050,
+             female: false, sleeve: 'long', mouthScale: 1.0, eye: 0x4a6a8a, eyeScale: 1.2 },
   };
 
   var L1 = 0.28, L2 = 0.26; // upper arm / forearm lengths (m)
@@ -315,8 +314,8 @@
     if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 
     var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xdfe9e6);
-    scene.fog = new THREE.Fog(0xdfe9e6, 2.6, 4.5);
+    scene.background = new THREE.Color(0xf6ecdd);
+    scene.fog = new THREE.Fog(0xf6ecdd, 2.6, 4.5);
 
     var camera = new THREE.PerspectiveCamera(34, 1, 0.1, 10);
     camera.position.set(0, 0.30, 1.55);
@@ -345,11 +344,16 @@
     scene.add(ground);
 
     var avatar = AVATARS[avatarName] || AVATARS.nia;
-    // Realistic look: smooth standard materials with soft roughness, so the
-    // avatar reads as a person rather than a cartoon. (The old cel/toon
-    // shading with a 4-step gradient map made everything look like a comic.)
+    // Anime look (demo restyle, 2026-11-18, at the owner's direction):
+    // cel shading via MeshToonMaterial with a 4-step gradient map — flat
+    // colour bands like a modern anime film, over the same rig and sign
+    // animation as the realistic build.
+    var gradientMap = new THREE.DataTexture(new Uint8Array([100, 165, 225, 255]), 4, 1, THREE.LuminanceFormat || THREE.RedFormat);
+    gradientMap.minFilter = gradientMap.magFilter = THREE.NearestFilter;
+    gradientMap.generateMipmaps = false;
+    gradientMap.needsUpdate = true;
     function std(color, roughness) {
-      return new THREE.MeshStandardMaterial({ color: color, roughness: roughness == null ? 0.65 : roughness, metalness: 0.0 });
+      return new THREE.MeshToonMaterial({ color: color, gradientMap: gradientMap });
     }
     var mats = {
       skin: std(avatar.skin, 0.72),
@@ -456,20 +460,21 @@
     // ---- head (realistic adult face: jawline, cheekbones, nose, lips) ----
     var headG = new THREE.Group();
     headG.position.set(0, 0.52, 0);
+    headG.scale.set(1.10, 1.07, 1.08); // anime proportion: a slightly larger head
     torso.add(headG);
     // Cranium: rounder and a touch wider than before. Jaw tapers the lower
     // face; chin finishes it.
     var skull = mesh(new THREE.SphereGeometry(0.098, 24, 18), mats.skin, 0, 0.018, -0.004, headG);
     skull.scale.set(0.95, 1.07, 0.96);
     var jaw = mesh(new THREE.SphereGeometry(0.072, 18, 14), mats.skin, 0, -0.048, 0.014, headG);
-    jaw.scale.set(0.82, 0.83, 0.82);
+    jaw.scale.set(0.76, 0.80, 0.80);
     var chin = mesh(new THREE.SphereGeometry(0.028, 12, 10), mats.skin, 0, -0.088, 0.038, headG);
-    chin.scale.set(0.92, 0.73, 0.8);
+    chin.scale.set(0.80, 0.62, 0.70);
     // Cheekbones give the face its structure — kept flat so they shape the
     // face rather than bulging out of it.
     var chkL = mesh(new THREE.SphereGeometry(0.026, 12, 10), mats.skin, -0.053, -0.008, 0.045, headG);
     var chkR = mesh(new THREE.SphereGeometry(0.026, 12, 10), mats.skin, 0.053, -0.008, 0.045, headG);
-    chkL.scale.set(0.92, 0.78, 0.62); chkR.scale.set(0.92, 0.78, 0.62);
+    chkL.scale.set(0.88, 0.72, 0.50); chkR.scale.set(0.88, 0.72, 0.50);
     // Iris texture: a radial-gradient iris with fibers, baked per eye color
     // on a canvas — far richer than a flat colored disc.
     function shade(hex, f) {
@@ -532,15 +537,15 @@
     }
     // Eyes: expressive and detailed — white, canvas-textured iris, pupil,
     // double catchlight, upper lid, lid creases, and lashes on women.
-    var EYE_SX = 1.30, EYE_SY = 0.60, EYE_SZ = 0.55;
+    var EYE_SX = 1.24, EYE_SY = 0.95, EYE_SZ = 0.60;
     function buildEye(side) {
       var g = new THREE.Group();
       g.position.set(side * 0.035, 0.014, 0.078);
       headG.add(g);
       var white = mesh(new THREE.SphereGeometry(0.018, 16, 12), mats.white, 0, 0, 0, g);
       white.scale.set(EYE_SX, EYE_SY, EYE_SZ);
-      var iris = mesh(new THREE.CircleGeometry(0.0092, 24), mats.iris, 0, 0, 0.0092, g);
-      mesh(new THREE.SphereGeometry(0.0042, 10, 8), mats.dark, 0, 0, 0.0128, g);
+      var iris = mesh(new THREE.CircleGeometry(0.0118, 24), mats.iris, 0, 0, 0.0092, g);
+      mesh(new THREE.SphereGeometry(0.0052, 10, 8), mats.dark, 0, 0, 0.0128, g);
       mesh(new THREE.SphereGeometry(0.0030, 8, 6), mats.white, 0.004, 0.004, 0.0142, g);
       mesh(new THREE.SphereGeometry(0.0014, 6, 4), mats.white, -0.003, -0.003, 0.0142, g);
       var lid = mesh(new THREE.SphereGeometry(0.0205, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), mats.skin, 0, 0.002, -0.002, g);
@@ -567,18 +572,18 @@
     var eyeL = buildEye(-1), eyeR = buildEye(1);
     // Brows: angled capsules; grammar moves them (see applyFace).
     var BROW_Z = Math.PI / 2;
-    var browL = mesh(new THREE.CapsuleGeometry(0.006, 0.032, 4, 8), mats.hair, -0.036, 0.052, 0.082, headG);
+    var browL = mesh(new THREE.CapsuleGeometry(0.0046, 0.032, 4, 8), mats.hair, -0.036, 0.052, 0.082, headG);
     browL.rotation.z = BROW_Z + 0.10; browL.rotation.y = -0.15;
-    var browR = mesh(new THREE.CapsuleGeometry(0.006, 0.032, 4, 8), mats.hair, 0.036, 0.052, 0.082, headG);
+    var browR = mesh(new THREE.CapsuleGeometry(0.0046, 0.032, 4, 8), mats.hair, 0.036, 0.052, 0.082, headG);
     browR.rotation.z = BROW_Z - 0.10; browR.rotation.y = 0.15;
     // Nose: bridge, tip and nostrils.
-    var noseBridge = mesh(new THREE.CapsuleGeometry(0.0055, 0.020, 4, 8), mats.skin, 0, 0.002, 0.090, headG);
+    var noseBridge = mesh(new THREE.CapsuleGeometry(0.0042, 0.018, 4, 8), mats.skin, 0, 0.002, 0.090, headG);
     noseBridge.rotation.x = 0.12;
-    mesh(new THREE.SphereGeometry(0.0095, 12, 10), mats.skin, 0, -0.013, 0.091, headG);
+    mesh(new THREE.SphereGeometry(0.0076, 12, 10), mats.skin, 0, -0.013, 0.091, headG);
     mesh(new THREE.SphereGeometry(0.0035, 8, 6), mats.nostril, -0.0075, -0.019, 0.086, headG);
     mesh(new THREE.SphereGeometry(0.0035, 8, 6), mats.nostril, 0.0075, -0.019, 0.086, headG);
     // Subtle cheek blush (women) — softens the skin like the reference.
-    var blushMat = new THREE.MeshStandardMaterial({ color: 0xd9707a, roughness: 0.9, metalness: 0.0, transparent: true, opacity: 0.26 });
+    var blushMat = new THREE.MeshStandardMaterial({ color: 0xd9707a, roughness: 0.9, metalness: 0.0, transparent: true, opacity: 0.38 });
     var blushL = mesh(new THREE.SphereGeometry(0.016, 10, 8), blushMat, -0.056, -0.028, 0.052, headG);
     var blushR = mesh(new THREE.SphereGeometry(0.016, 10, 8), blushMat, 0.056, -0.028, 0.052, headG);
     blushL.scale.set(1, 0.6, 0.5); blushR.scale.set(1, 0.6, 0.5);
@@ -599,9 +604,9 @@
     var bowR = mesh(new THREE.SphereGeometry(0.007, 8, 6), mats.lip, 0.006, 0.007, 0.001, mouth);
     bowL.scale.set(1, 0.55, 0.6); bowR.scale.set(1, 0.55, 0.6);
     var upperLip = mesh(new THREE.SphereGeometry(0.018, 12, 10), mats.lip, 0, 0.0025, 0.002, mouth);
-    upperLip.scale.set(1.15, 0.30, 0.5);
+    upperLip.scale.set(1.0, 0.30, 0.5);
     var lowerLip = mesh(new THREE.SphereGeometry(0.015, 12, 10), mats.lip, 0, -0.0075, 0.002, mouth);
-    lowerLip.scale.set(1.05, 0.45, 0.5);
+    lowerLip.scale.set(0.94, 0.45, 0.5);
     mesh(new THREE.BoxGeometry(0.028, 0.0028, 0.004), mats.nostril, 0, -0.0025, 0.005, mouth);
     // Optional stubble shading over the jaw (Marc).
     var stubbleM = mesh(new THREE.SphereGeometry(0.070, 14, 10), mats.stubble, 0, -0.052, 0.022, headG);
@@ -629,7 +634,17 @@
         if (rz) m.rotation.z = rz;
         return m;
       }
-      if (style === 'blondebob') { // Nia: layered blonde bob to the jaw
+      if (style === 'longblack' || style === 'longbrown') { // anime: long hair past the shoulders
+        shell(0.108, 0.048, -0.018, 1.02, Math.PI * 0.66, 1.04, 1.0, 1.04);
+        puff(0.050, -0.092, -0.075, 0.002, 0.55, 1.85, 0.95);  // long side panels
+        puff(0.050, 0.092, -0.075, 0.002, 0.55, 1.85, 0.95);
+        puff(0.082, 0, -0.045, -0.078, 1.02, 1.35, 0.85);      // long back volume
+        puff(0.056, 0.012, 0.090, 0.050, 1.15, 0.40, 0.70, -0.16); // side-swept fringe
+      } else if (style === 'crop') { // anime: short crop (men)
+        shell(0.104, 0.056, -0.014, 1.00, Math.PI * 0.54, 1.0, 0.86, 1.0);
+        puff(0.055, 0.018, 0.096, 0.050, 1.20, 0.42, 0.68, -0.24); // swept fringe
+        puff(0.040, -0.055, 0.078, 0.045, 1.0, 0.55, 0.7, 0.22);
+      } else if (style === 'blondebob') { // Nia: layered blonde bob to the jaw
         shell(0.106, 0.045, -0.016, 1.05, Math.PI * 0.60, 1.03, 0.98, 1.03);
         puff(0.046, -0.088, -0.032, 0.006, 0.55, 1.30, 0.95); // side panels
         puff(0.046, 0.088, -0.032, 0.006, 0.55, 1.30, 0.95);
@@ -1194,7 +1209,7 @@
             var fsLang = fingerspellLangFor(language);
             for (var c = 0; c < word.length; c++) {
               var lp = fsLang ? letterPreset(word[c], fsLang) : { preset: null };
-              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 380)); }
+              if (lp.preset) { rep.letters++; items.push(letterItem(word[c], lp, 380, fsLang)); }
               else { noteMissing(rep, 'missingLetters', word[c]); items.push(missingLetterItem(word[c])); }
             }
           }
@@ -1202,7 +1217,7 @@
           var txt = p.text.replace(/[^A-Z0-9]/g, '');
           for (var d = 0; d < txt.length; d++) {
             var lp2 = letterPreset(txt[d], p.lang);
-            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 380)); }
+            if (lp2.preset) { rep.letters++; items.push(letterItem(txt[d], lp2, 380, p.lang)); }
             else { noteMissing(rep, 'missingLetters', txt[d]); items.push(missingLetterItem(txt[d], 200)); }
           }
         } else {
@@ -1233,13 +1248,22 @@
       if (queue.length > MAXQ) queue.splice(0, queue.length - MAXQ);
     }
 
-    function letterItem(ch, lp, holdMs) {
+    function letterItem(ch, lp, holdMs, spellLang) {
       var item = { type: 'letter', ch: ch, lang: lp.lang, preset: lp.preset, holdMs: holdMs || 380, face: 'neutral' };
       if (lp.preset && lp.preset.support) {
         var sup = lp.preset.support;
         var curl = sup === 'fist' ? shapeFor('fist') : shapeFor('flat');
         item.support = { curl: curl, palm: sup === 'flat-up' ? 'up' : sup === 'flat-fwd' ? 'fwd' : 'fwd' };
         item.supportPos = lp.preset.supportPos || [-0.18, -0.09, 0.0];
+      } else if (spellLang === 'bsl' || spellLang === 'psl') {
+        // Two-handed alphabets (BSL/PSL): the support hand is held flat,
+        // palm up, under the dominant hand for EVERY letter — that is the
+        // documented support posture of the system (see the vowel entries
+        // in fingerspell3d.js). Letters whose dominant-hand shape is not
+        // yet authored keep their existing fallback shape; this only
+        // guarantees both hands work while spelling, as they should.
+        item.support = { curl: shapeFor('flat'), palm: 'up' };
+        item.supportPos = [-0.18, -0.09, 0.0];
       }
       return item;
     }

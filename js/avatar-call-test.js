@@ -176,7 +176,7 @@
       return;
     }
     try {
-      engine = createSigner3DEngine(canvas, 'nia', { rocketbox: { base: 'models/rb' } });
+      engine = createSigner3DEngine(canvas, 'nia', {});
     } catch (e) { engine = null; }
     if (!engine || !engine.ready) {
       engine = null;

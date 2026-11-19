@@ -314,7 +314,26 @@
     if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
 
     var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf6ecdd);
+    // Studio backdrop: a soft radial pool of light behind the signer
+    // (bright warm centre falling to a deeper warm edge), like the
+    // sample video's backdrop. The flat cream filled the frame evenly
+    // and gave the character nothing to stand out against; the deeper
+    // edge raises the contrast around her silhouette — dark hair and
+    // the orange cardigan both pop harder against it.
+    try {
+      var bgc = document.createElement('canvas'); bgc.width = 512; bgc.height = 512;
+      var bgx = bgc.getContext('2d');
+      var rg = bgx.createRadialGradient(256, 210, 50, 256, 250, 350);
+      rg.addColorStop(0, '#fcf6ea');
+      rg.addColorStop(0.55, '#f6ecdd');
+      rg.addColorStop(1, '#dfcba9');
+      bgx.fillStyle = rg; bgx.fillRect(0, 0, 512, 512);
+      var bgTex = new THREE.CanvasTexture(bgc);
+      if (THREE.sRGBEncoding) bgTex.encoding = THREE.sRGBEncoding;
+      scene.background = bgTex;
+    } catch (e) {
+      scene.background = new THREE.Color(0xf6ecdd);
+    }
     scene.fog = new THREE.Fog(0xf6ecdd, 2.6, 4.5);
 
     var camera = new THREE.PerspectiveCamera(34, 1, 0.1, 10);

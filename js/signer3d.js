@@ -1177,177 +1177,49 @@
         rb.neckBone = rbFindBone(model, 'J_Bip_C_Neck');
         rb.neckBind = rb.neckBone ? rb.neckBone.quaternion.clone() : null;
         // Long hair: the base model's own hair is a jaw-length bob, but
-        // the owner's sample has long hair past the shoulders. Add three
-        // toon-shaded hair panels (back + two sides) with a painted
-        // strand texture, hung from the crown and attached to the wrap
-        // so they ride her breathing. The head bone itself is not driven
-        // by the signer (only a micro-sway), so panels stay registered.
+        // the sample character's hair runs to her waist. Nine rounds of
+        // bolted-on ribbon panels always read as separate panels
+        // (visible flat tops, a step at the jaw, jagged hems), so her
+        // OWN hair mesh is grown instead: vertices below the head pivot
+        // are remapped downward with a stretch that ramps from 1x at
+        // the hairline (the shell stays attached to the scalp) to ~10x
+        // at the bob's hem (it lands at the waist), widened as it
+        // descends past the torso and nudged clear of the chest and
+        // back surfaces (bind-space body: half-width 0.14-0.16, chest
+        // front z <= 0.123, back z >= -0.131 at those heights). Same
+        // mesh, same texture, same material: one continuous hairstyle
+        // by construction. This model's materials are unlit, so the
+        // stretch costs no shading quality.
         try {
-          vrmHairPanels.forEach(function (m) { if (m.parent) m.parent.remove(m); if (m.geometry) m.geometry.dispose(); });
-          vrmHairPanels = [];
-          var headW = wp('J_Bip_C_Head'), neckW = wp('J_Bip_C_Neck');
-          var headR = neckW ? headW.distanceTo(neckW) : 0.10;
-          var crownY = headW.y + headR * 0.95;
-          // Use the model's OWN hair material for the panels (cloned from
-          // the Hair mesh): same texture, same shading response as the
-          // bob, so panels and bob are one hair colour by construction.
-          // Every flat colour tried rendered lighter than the bob under
-          // this scene's lights; matching the material removes the
-          // two-tone step entirely.
-          var hairMat = null;
-          model.traverse(function (o) {
-            if (!hairMat && o.isMesh && /hair/i.test(o.name || '')) {
-              var hm = Array.isArray(o.material) ? o.material[0] : o.material;
-              if (hm) { hairMat = hm.clone(); hairMat.side = THREE.DoubleSide; }
+          var hairMesh = null;
+          model.traverse(function (o) { if (!hairMesh && o.isMesh && /hair/i.test(o.name || '')) hairMesh = o; });
+          var headBoneG = rbFindBone(model, 'J_Bip_C_Head');
+          if (hairMesh && headBoneG) {
+            model.updateMatrixWorld(true);
+            var pivot = new THREE.Vector3();
+            headBoneG.getWorldPosition(pivot);
+            hairMesh.worldToLocal(pivot); // head pivot in geometry space
+            var posA = hairMesh.geometry.attributes.position;
+            var MAXD = 0.052, TARGET = 0.55; // bob hem drop -> waist drop
+            function sstep(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+            for (var vi = 0; vi < posA.count; vi++) {
+              var vx = posA.getX(vi), vy = posA.getY(vi), vz = posA.getZ(vi);
+              var dx = vx - pivot.x, dy = vy - pivot.y, dz = vz - pivot.z;
+              var drop = -dy;
+              if (drop <= 0.004) continue; // crown and hairline stay attached
+              var tt = Math.min(1.15, drop / MAXD);
+              var nd = drop * (1 + (TARGET / MAXD - 1) * Math.pow(tt, 1.5));
+              // Fringe guard: centre-front vertices stay a fringe.
+              if (dz > 0.05 && Math.abs(dx) < 0.04) nd = Math.min(nd, 0.06);
+              var w = 1 + 0.65 * sstep(0.08, 0.45, nd); // widen past the torso
+              var nz = vz;
+              if (dz > 0.02 && nd > 0.25) nz = Math.max(nz, pivot.z + 0.133); // clear the chest front
+              if (dz < -0.02 && nd > 0.15) nz = Math.min(nz, pivot.z - 0.148); // clear the back
+              posA.setXYZ(vi, pivot.x + dx * w, pivot.y - nd, nz);
             }
-          });
-          // Strand texture drawn once: near-black base with layered
-          // strand strokes and a soft sheen band. The model's own hair
-          // texture is almost uniform black, so flat sheets lit flatly
-          // merge into one mass — painted strand lines are what make
-          // separate strands visible, as on the sample character.
-          var strandTex = null;
-          try {
-            var sc = document.createElement('canvas'); sc.width = 256; sc.height = 512;
-            var sx2 = sc.getContext('2d');
-            // Smooth "tube" shading across the width — dark edges, a
-            // soft lighter centre — so each strand reads as a rounded
-            // lock of smooth hair. (The previous bold speckle strokes
-            // read as braids/locs; smooth hair is low-contrast and
-            // long, with shading doing the work, not speckles.)
-            sx2.fillStyle = '#131313'; sx2.fillRect(0, 0, 256, 512);
-            var tube = sx2.createLinearGradient(0, 0, 256, 0);
-            tube.addColorStop(0, 'rgba(0,0,0,0.55)');
-            tube.addColorStop(0.28, 'rgba(90,90,90,0.10)');
-            tube.addColorStop(0.5, 'rgba(150,150,150,0.16)');
-            tube.addColorStop(0.72, 'rgba(90,90,90,0.10)');
-            tube.addColorStop(1, 'rgba(0,0,0,0.55)');
-            sx2.fillStyle = tube; sx2.fillRect(0, 0, 256, 512);
-            var grad = sx2.createLinearGradient(0, 0, 0, 512);
-            grad.addColorStop(0, 'rgba(70,70,70,0.22)');
-            grad.addColorStop(0.45, 'rgba(0,0,0,0)');
-            grad.addColorStop(1, 'rgba(0,0,0,0.30)');
-            sx2.fillStyle = grad; sx2.fillRect(0, 0, 256, 512);
-            for (var ti = 0; ti < 18; ti++) { // long, faint strand lines
-              var tx0 = Math.random() * 256;
-              sx2.strokeStyle = Math.random() < 0.5 ? 'rgba(150,150,150,0.10)' : 'rgba(0,0,0,0.22)';
-              sx2.lineWidth = 2 + Math.random() * 3;
-              sx2.beginPath(); sx2.moveTo(tx0, -10);
-              sx2.bezierCurveTo(tx0 + (Math.random() * 8 - 4), 150, tx0 + (Math.random() * 8 - 4), 340, tx0 + (Math.random() * 10 - 5), 522);
-              sx2.stroke();
-            }
-            strandTex = new THREE.CanvasTexture(sc);
-            if (THREE.sRGBEncoding) strandTex.encoding = THREE.sRGBEncoding;
-          } catch (e) { strandTex = null; }
-          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp, shade, hem) {
-            var rows = 14, pos = [], idx = [], uvs = [];
-            var cols = [-1, -0.5, 0, 0.5, 1];
-            for (var i = 0; i <= rows; i++) {
-              var t = i / rows;
-              var yBase = topY - t * len - (i === rows ? 0.014 * (hem == null ? 1 : hem) : 0);
-              var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
-              var hw = (w0 / 2) * (1 - (taperK || 0.42) * t) * jit;
-              if (pinch) hw *= 1 - pinch * Math.max(0, 1 - t * 3); // narrow top, tucks behind the head
-              var zc = cz + Math.sin(t * Math.PI) * bowZ + t * (drapeZ || 0) + Math.sin(t * 7.5 + seed) * 0.011;
-              // Gentle S-sway that grows toward the tip, so a strand
-              // curves instead of hanging ruler-straight.
-              var cxr = cx + Math.sin(t * 5.0 + seed) * 0.008 + Math.sin(t * 3.1 + seed * 1.3) * 0.010 * t;
-              for (var j = 0; j < cols.length; j++) {
-                var f = cols[j];
-                // Arched top edge: edge columns drop by topArch * f^2 for
-                // their whole length, so no panel presents a straight
-                // horizontal top line (the "slab / backdrop" read), and
-                // the centre strand hangs longest, like real hair cards.
-                var drop = (topArch || 0) * f * f;
-                // Cross-section curve: edges pulled in z so the sheet
-                // wraps around the head/chest instead of lying dead flat.
-                var zz = zc + (wrapZ || 0) * f * f;
-                var yy = yBase - drop + (i === rows && f !== 0 ? 0.030 * (hem == null ? 1 : hem) : 0);
-                // Independent edge undulation: each side edge wanders on
-                // its own phase, growing downward — the silhouette reads
-                // as hair strands, not a cut ribbon.
-                var eOff = 0;
-                if (f !== 0 && edgeAmp) eOff = Math.sin(t * 6.0 + seed + (f > 0 ? 2.1 : 0)) * edgeAmp * t * Math.abs(f);
-                pos.push(cxr + f * hw + eOff, yy, zz);
-                uvs.push((f + 1) / 2, 1 - t);
-              }
-              if (i < rows) {
-                var a = i * cols.length, b = a + cols.length;
-                for (var k = 0; k < cols.length - 1; k++) {
-                  idx.push(a + k, b + k, a + k + 1, a + k + 1, b + k, b + k + 1);
-                }
-              }
-            }
-            var geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-            geo.setIndex(idx);
-            geo.computeVertexNormals();
-            var mat;
-            if (hairMat) {
-              // Per-strand clone with a slight shade multiplier: subtle
-              // light/dark variation between strands is what makes
-              // separate strands visible as layers instead of one mass.
-              mat = hairMat.clone();
-              if (shade && mat.color) mat.color.multiplyScalar(shade);
-              if (strandTex) mat.map = strandTex;
-            } else {
-              mat = std(color || 0x17120e);
-              if (strandTex) mat.map = strandTex;
-            }
-            mat.side = THREE.DoubleSide;
-            var mesh = new THREE.Mesh(geo, mat);
-            scene.add(mesh);
-            wrap.attach(mesh); // keep world placement, ride the wrap from here
-            vrmHairPanels.push(mesh);
-            return mesh;
+            posA.needsUpdate = true;
           }
-          // Placement rule learned the hard way: panels must sit OUTSIDE
-          // the torso volume (back z < -0.09, front z > +0.13 at chest
-          // height, sides beyond the neck silhouette) or the body hides
-          // them and only neck-high slivers show.
-          // Hair is built from overlapping STRANDS, not single sheets:
-          // narrow tapered strips with staggered lengths and undulating
-          // edges read as layered hair; one wide sheet reads as a board.
-          // Back: four narrow strands with real gaps between them —
-          // strands spaced wider than their width, strongly tapered,
-          // with staggered lengths and slight shade steps per strand.
-          hairPanel(headW.x - 0.072, crownY - headR * 0.35, headW.z - headR * 1.0 + 0.004, 0.042, 0.58, -0.010, 1.7, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.93);
-          hairPanel(headW.x - 0.024, crownY - headR * 0.35, headW.z - headR * 1.0, 0.042, 0.64, -0.010, 3.3, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 1.00);
-          hairPanel(headW.x + 0.024, crownY - headR * 0.35, headW.z - headR * 1.0, 0.042, 0.64, -0.010, 5.1, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.97);
-          hairPanel(headW.x + 0.072, crownY - headR * 0.35, headW.z - headR * 1.0 + 0.004, 0.042, 0.58, -0.010, 6.9, -0.050, 0x17120e, 0.25, 0.050, 0.050, 0.60, 0.010, 0.90);
-          // Sides: three strands each, tops tucked up under the bob and
-          // pinched so they emerge from beneath it instead of butting
-          // against it (kills the step/notch at the jaw line); lengths
-          // staggered so no two strands end on the same line.
-          hairPanel(headW.x - headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.046, 0.60, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
-          hairPanel(headW.x - headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.046, 0.55, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
-          hairPanel(headW.x - headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.046, 0.48, 0.012, 7.8, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
-          hairPanel(headW.x + headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.046, 0.60, 0.012, 9.6, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
-          hairPanel(headW.x + headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.046, 0.55, 0.012, 11.4, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
-          hairPanel(headW.x + headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.046, 0.48, 0.012, 13.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
-          // Front falls over the shoulders, like the sample's hair —
-          // without these the length hides behind her from the front.
-          // Wide enough out to lie over the orange fabric, not in the V.
-          // Shoulder-drape strands: start beside the face like the side
-          // strands but drape strongly forward, so the hair crosses
-          // OVER the shoulder onto the chest — no orange gap between
-          // where the side hair ends and the front falls begin.
-          hairPanel(headW.x - headR * 1.30, crownY + 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 15.0, 0.110, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.95, 0.25);
-          hairPanel(headW.x + headR * 1.30, crownY + 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 16.8, 0.110, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.95, 0.25);
-          // Front falls sit FORWARD of the measured chest surface
-          // (z 0.142-0.161 across the chest band) along their whole
-          // length — an earlier build had them buried inside the torso
-          // until mid-chest, so they appeared to "start" halfway down.
-          hairPanel(headW.x - headR * 0.62, crownY + 0.02, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 18.6, 0.070, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.98, 0.25);
-          hairPanel(headW.x - headR * 0.80, crownY + 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.97, 0.25);
-          hairPanel(headW.x - headR * 1.08, crownY + 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 4.4, 0.080, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 1.00, 0.25);
-          hairPanel(headW.x - headR * 1.34, crownY + 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 6.2, 0.085, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.92, 0.25);
-          hairPanel(headW.x + headR * 0.62, crownY + 0.02, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 20.4, 0.070, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.98, 0.25);
-          hairPanel(headW.x + headR * 0.80, crownY + 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.97, 0.25);
-          hairPanel(headW.x + headR * 1.08, crownY + 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 11.2, 0.080, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 1.00, 0.25);
-          hairPanel(headW.x + headR * 1.34, crownY + 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 13.0, 0.085, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.92, 0.25);
-        } catch (e) { /* hair panels are cosmetic; never fail the load */ }
+        } catch (e) { /* grown hair is cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the
         // hands tiny and the whole figure read as a doll).

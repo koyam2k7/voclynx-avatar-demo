@@ -1196,22 +1196,22 @@
             // lock of smooth hair. (The previous bold speckle strokes
             // read as braids/locs; smooth hair is low-contrast and
             // long, with shading doing the work, not speckles.)
-            sx2.fillStyle = '#16120e'; sx2.fillRect(0, 0, 256, 512);
+            sx2.fillStyle = '#131313'; sx2.fillRect(0, 0, 256, 512);
             var tube = sx2.createLinearGradient(0, 0, 256, 0);
             tube.addColorStop(0, 'rgba(0,0,0,0.55)');
-            tube.addColorStop(0.28, 'rgba(88,66,42,0.14)');
-            tube.addColorStop(0.5, 'rgba(150,118,78,0.20)');
-            tube.addColorStop(0.72, 'rgba(88,66,42,0.14)');
+            tube.addColorStop(0.28, 'rgba(90,90,90,0.10)');
+            tube.addColorStop(0.5, 'rgba(150,150,150,0.16)');
+            tube.addColorStop(0.72, 'rgba(90,90,90,0.10)');
             tube.addColorStop(1, 'rgba(0,0,0,0.55)');
             sx2.fillStyle = tube; sx2.fillRect(0, 0, 256, 512);
             var grad = sx2.createLinearGradient(0, 0, 0, 512);
-            grad.addColorStop(0, 'rgba(70,54,36,0.25)');
+            grad.addColorStop(0, 'rgba(70,70,70,0.22)');
             grad.addColorStop(0.45, 'rgba(0,0,0,0)');
             grad.addColorStop(1, 'rgba(0,0,0,0.30)');
             sx2.fillStyle = grad; sx2.fillRect(0, 0, 256, 512);
             for (var ti = 0; ti < 18; ti++) { // long, faint strand lines
               var tx0 = Math.random() * 256;
-              sx2.strokeStyle = Math.random() < 0.5 ? 'rgba(120,92,58,0.16)' : 'rgba(0,0,0,0.20)';
+              sx2.strokeStyle = Math.random() < 0.5 ? 'rgba(150,150,150,0.10)' : 'rgba(0,0,0,0.22)';
               sx2.lineWidth = 2 + Math.random() * 3;
               sx2.beginPath(); sx2.moveTo(tx0, -10);
               sx2.bezierCurveTo(tx0 + (Math.random() * 8 - 4), 150, tx0 + (Math.random() * 8 - 4), 340, tx0 + (Math.random() * 10 - 5), 522);
@@ -1314,20 +1314,20 @@
           // strands but drape strongly forward, so the hair crosses
           // OVER the shoulder onto the chest — no orange gap between
           // where the side hair ends and the front falls begin.
-          hairPanel(headW.x - headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 15.0, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.95);
-          hairPanel(headW.x + headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 16.8, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.95);
+          hairPanel(headW.x - headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 15.0, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.95);
+          hairPanel(headW.x + headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 16.8, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.95);
           // Front falls sit FORWARD of the measured chest surface
           // (z 0.142-0.161 across the chest band) along their whole
           // length — an earlier build had them buried inside the torso
           // until mid-chest, so they appeared to "start" halfway down.
-          hairPanel(headW.x - headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 18.6, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.98);
-          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.97);
-          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.54, 0.028, 4.4, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 1.00);
-          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.48, 0.026, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.92);
-          hairPanel(headW.x + headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 20.4, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.98);
-          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.97);
-          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.54, 0.028, 11.2, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 1.00);
-          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.48, 0.026, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.006, 0.92);
+          hairPanel(headW.x - headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 18.6, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.98);
+          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.97);
+          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 4.4, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 1.00);
+          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.92);
+          hairPanel(headW.x + headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 20.4, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.98);
+          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.97);
+          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 11.2, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 1.00);
+          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.92);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

@@ -1239,12 +1239,12 @@
             strandTex = new THREE.CanvasTexture(sc);
             if (THREE.sRGBEncoding) strandTex.encoding = THREE.sRGBEncoding;
           } catch (e) { strandTex = null; }
-          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp, shade) {
+          function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp, shade, hem) {
             var rows = 14, pos = [], idx = [], uvs = [];
             var cols = [-1, -0.5, 0, 0.5, 1];
             for (var i = 0; i <= rows; i++) {
               var t = i / rows;
-              var yBase = topY - t * len - (i === rows ? 0.014 : 0);
+              var yBase = topY - t * len - (i === rows ? 0.014 * (hem == null ? 1 : hem) : 0);
               var jit = 1 + 0.07 * Math.sin(seed + i * 2.39) * (i === 0 ? 0 : 1);
               var hw = (w0 / 2) * (1 - (taperK || 0.42) * t) * jit;
               if (pinch) hw *= 1 - pinch * Math.max(0, 1 - t * 3); // narrow top, tucks behind the head
@@ -1262,7 +1262,7 @@
                 // Cross-section curve: edges pulled in z so the sheet
                 // wraps around the head/chest instead of lying dead flat.
                 var zz = zc + (wrapZ || 0) * f * f;
-                var yy = yBase - drop + (i === rows && f !== 0 ? 0.030 : 0);
+                var yy = yBase - drop + (i === rows && f !== 0 ? 0.030 * (hem == null ? 1 : hem) : 0);
                 // Independent edge undulation: each side edge wanders on
                 // its own phase, growing downward — the silhouette reads
                 // as hair strands, not a cut ribbon.
@@ -1333,20 +1333,20 @@
           // strands but drape strongly forward, so the hair crosses
           // OVER the shoulder onto the chest — no orange gap between
           // where the side hair ends and the front falls begin.
-          hairPanel(headW.x - headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 15.0, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.95);
-          hairPanel(headW.x + headR * 1.30, crownY - 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 16.8, 0.110, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.95);
+          hairPanel(headW.x - headR * 1.30, crownY + 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 15.0, 0.110, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.95, 0.25);
+          hairPanel(headW.x + headR * 1.30, crownY + 0.02, headW.z + headR * 0.75, 0.038, 0.58, 0.030, 16.8, 0.110, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.95, 0.25);
           // Front falls sit FORWARD of the measured chest surface
           // (z 0.142-0.161 across the chest band) along their whole
           // length — an earlier build had them buried inside the torso
           // until mid-chest, so they appeared to "start" halfway down.
-          hairPanel(headW.x - headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 18.6, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.98);
-          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.97);
-          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 4.4, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 1.00);
-          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.92);
-          hairPanel(headW.x + headR * 0.62, crownY - 0.01, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 20.4, 0.070, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.98);
-          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.97);
-          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 11.2, 0.080, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 1.00);
-          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.38, 0.004, 0.92);
+          hairPanel(headW.x - headR * 0.62, crownY + 0.02, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 18.6, 0.070, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.98, 0.25);
+          hairPanel(headW.x - headR * 0.80, crownY + 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.97, 0.25);
+          hairPanel(headW.x - headR * 1.08, crownY + 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 4.4, 0.080, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 1.00, 0.25);
+          hairPanel(headW.x - headR * 1.34, crownY + 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 6.2, 0.085, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.92, 0.25);
+          hairPanel(headW.x + headR * 0.62, crownY + 0.02, headW.z + headR * 1.10, 0.047, 0.56, 0.030, 20.4, 0.070, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.98, 0.25);
+          hairPanel(headW.x + headR * 0.80, crownY + 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.97, 0.25);
+          hairPanel(headW.x + headR * 1.08, crownY + 0.02, headW.z + headR * 0.98, 0.047, 0.57, 0.028, 11.2, 0.080, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 1.00, 0.25);
+          hairPanel(headW.x + headR * 1.34, crownY + 0.02, headW.z + headR * 0.88, 0.047, 0.55, 0.026, 13.0, 0.085, 0x20150d, 0.45, 0.010, -0.012, 0.38, 0.004, 0.92, 0.25);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

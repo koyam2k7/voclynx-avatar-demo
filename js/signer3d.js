@@ -1182,6 +1182,15 @@
             (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mt) {
               if (mt && mt.color && /hair/i.test(mt.name || '')) {
                 mt.color.r *= 0.55; mt.color.g *= 0.50; mt.color.b *= 0.455;
+                try {
+                  (window.__niaMats = window.__niaMats || []).push({
+                    name: mt.name, type: mt.type,
+                    color: [mt.color.r, mt.color.g, mt.color.b].map(function (x) { return Math.round(x * 1000) / 1000; }),
+                    hasMap: !!mt.map,
+                    mapSize: mt.map && mt.map.image ? [mt.map.image.width, mt.map.image.height] : null,
+                    transparent: !!mt.transparent, opacity: mt.opacity
+                  });
+                } catch (e) {}
               }
             });
           });

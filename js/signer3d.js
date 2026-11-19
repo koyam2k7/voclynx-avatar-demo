@@ -1189,7 +1189,7 @@
                 // crushed the hair to flat black for three builds.
                 if (tintedMats.indexOf(mt) >= 0) return;
                 tintedMats.push(mt);
-                mt.color.r *= 0.55; mt.color.g *= 0.50; mt.color.b *= 0.455;
+                mt.color.r *= 0.55; mt.color.g *= 0.44; mt.color.b *= 0.35;
                 try {
                   (window.__niaMats = window.__niaMats || []).push({
                     name: mt.name, type: mt.type,

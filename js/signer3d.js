@@ -1181,7 +1181,7 @@
             if (!o.isMesh && !o.isSkinnedMesh) return;
             (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mt) {
               if (mt && mt.color && /hair/i.test(mt.name || '')) {
-                mt.color.r *= 0.27; mt.color.g *= 0.235; mt.color.b *= 0.21;
+                mt.color.r *= 0.55; mt.color.g *= 0.50; mt.color.b *= 0.455;
               }
             });
           });

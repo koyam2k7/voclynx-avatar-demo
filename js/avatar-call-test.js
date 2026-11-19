@@ -206,6 +206,48 @@
     $('signer-status').textContent = 'Signer ready';
   }
 
+  /* Probe mode (?probe=1): sample the rendered canvas and dump pixel
+     statistics + hair material state as page text, so visual checks
+     can be grounded in numbers instead of impressions. */
+  if (/[?&]probe/.test(location.search)) {
+    setTimeout(function () {
+      requestAnimationFrame(function () {
+        var cv = $('signer-canvas');
+        var out = { mats: window.__niaMats || null };
+        try {
+          var c2 = document.createElement('canvas');
+          c2.width = cv.width; c2.height = cv.height;
+          var x2 = c2.getContext('2d');
+          x2.drawImage(cv, 0, 0);
+          var d = x2.getImageData(0, 0, c2.width, c2.height).data;
+          function regionStats(x0, y0, x1, y1) {
+            var n = 0, sum = 0, min = 1e9, max = -1, vals = [];
+            for (var y = y0; y < y1; y += 3) for (var x = x0; x < x1; x += 3) {
+              var i = (y * c2.width + x) * 4;
+              var lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
+              vals.push(lum); sum += lum; n++;
+              if (lum < min) min = lum; if (lum > max) max = lum;
+            }
+            var mean = sum / n, sq = 0;
+            vals.forEach(function (v) { sq += (v - mean) * (v - mean); });
+            return { mean: Math.round(mean), min: Math.round(min), max: Math.round(max), std: Math.round(Math.sqrt(sq / n) * 10) / 10 };
+          }
+          var W = c2.width, H = c2.height;
+          out.canvas = [W, H];
+          out.hairLeft = regionStats(Math.round(W * 0.28), Math.round(H * 0.18), Math.round(W * 0.44), Math.round(H * 0.62));
+          out.hairRight = regionStats(Math.round(W * 0.56), Math.round(H * 0.18), Math.round(W * 0.72), Math.round(H * 0.62));
+          out.fringe = regionStats(Math.round(W * 0.44), Math.round(H * 0.10), Math.round(W * 0.56), Math.round(H * 0.22));
+          out.face = regionStats(Math.round(W * 0.45), Math.round(H * 0.24), Math.round(W * 0.55), Math.round(H * 0.40));
+        } catch (e) { out.error = String(e); }
+        var pre = document.createElement('pre');
+        pre.id = 'probe-out';
+        pre.style.cssText = 'position:fixed;top:0;left:0;z-index:99;background:#fff;color:#000;font-size:13px;padding:8px;max-width:90vw;white-space:pre-wrap;';
+        pre.textContent = 'PROBE ' + JSON.stringify(out, null, 1);
+        document.body.appendChild(pre);
+      });
+    }, 2500);
+  }
+
   /* ---------------- speech recognition (optional) ---------------- */
   function initMic() {
     var btn = $('hear-mic');

@@ -1176,50 +1176,12 @@
         rb.headBind = rb.headBone ? rb.headBone.quaternion.clone() : null;
         rb.neckBone = rbFindBone(model, 'J_Bip_C_Neck');
         rb.neckBind = rb.neckBone ? rb.neckBone.quaternion.clone() : null;
-        // Long hair: the base model's own hair is a jaw-length bob, but
-        // the sample character's hair runs to her waist. Nine rounds of
-        // bolted-on ribbon panels always read as separate panels
-        // (visible flat tops, a step at the jaw, jagged hems), so her
-        // OWN hair mesh is grown instead: vertices below the head pivot
-        // are remapped downward with a stretch that ramps from 1x at
-        // the hairline (the shell stays attached to the scalp) to ~10x
-        // at the bob's hem (it lands at the waist), widened as it
-        // descends past the torso and nudged clear of the chest and
-        // back surfaces (bind-space body: half-width 0.14-0.16, chest
-        // front z <= 0.123, back z >= -0.131 at those heights). Same
-        // mesh, same texture, same material: one continuous hairstyle
-        // by construction. This model's materials are unlit, so the
-        // stretch costs no shading quality.
-        try {
-          var hairMesh = null;
-          model.traverse(function (o) { if (!hairMesh && o.isMesh && /hair/i.test(o.name || '')) hairMesh = o; });
-          var headBoneG = rbFindBone(model, 'J_Bip_C_Head');
-          if (hairMesh && headBoneG) {
-            model.updateMatrixWorld(true);
-            var pivot = new THREE.Vector3();
-            headBoneG.getWorldPosition(pivot);
-            hairMesh.worldToLocal(pivot); // head pivot in geometry space
-            var posA = hairMesh.geometry.attributes.position;
-            var MAXD = 0.052, TARGET = 0.55; // bob hem drop -> waist drop
-            function sstep(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
-            for (var vi = 0; vi < posA.count; vi++) {
-              var vx = posA.getX(vi), vy = posA.getY(vi), vz = posA.getZ(vi);
-              var dx = vx - pivot.x, dy = vy - pivot.y, dz = vz - pivot.z;
-              var drop = -dy;
-              if (drop <= 0.004) continue; // crown and hairline stay attached
-              var tt = Math.min(1.15, drop / MAXD);
-              var nd = drop * (1 + (TARGET / MAXD - 1) * Math.pow(tt, 1.5));
-              // Fringe guard: centre-front vertices stay a fringe.
-              if (dz > 0.05 && Math.abs(dx) < 0.04) nd = Math.min(nd, 0.06);
-              var w = 1 + 0.65 * sstep(0.08, 0.45, nd); // widen past the torso
-              var nz = vz;
-              if (dz > 0.02 && nd > 0.25) nz = Math.max(nz, pivot.z + 0.133); // clear the chest front
-              if (dz < -0.02 && nd > 0.15) nz = Math.min(nz, pivot.z - 0.148); // clear the back
-              posA.setXYZ(vi, pivot.x + dx * w, pivot.y - nd, nz);
-            }
-            posA.needsUpdate = true;
-          }
-        } catch (e) { /* grown hair is cosmetic; never fail the load */ }
+        // Hair: Nia's model (a recoloured VRoid sample) has native long
+        // hair to mid-back — no panels and no mesh-growing. Both were
+        // tried on the previous bob-haired model and rejected: panels
+        // always read as separate pieces, and the bob's below-jaw
+        // geometry is separate tapered strands that turn to strings
+        // when stretched.
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the
         // hands tiny and the whole figure read as a doll).

@@ -1182,8 +1182,43 @@
               if (hm) { hairMat = hm.clone(); hairMat.side = THREE.DoubleSide; }
             }
           });
+          // Strand texture drawn once: near-black base with layered
+          // strand strokes and a soft sheen band. The model's own hair
+          // texture is almost uniform black, so flat sheets lit flatly
+          // merge into one mass — painted strand lines are what make
+          // separate strands visible, as on the sample character.
+          var strandTex = null;
+          try {
+            var sc = document.createElement('canvas'); sc.width = 256; sc.height = 512;
+            var sx2 = sc.getContext('2d');
+            sx2.fillStyle = '#171310'; sx2.fillRect(0, 0, 256, 512);
+            var grad = sx2.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, 'rgba(64,48,32,0.35)');
+            grad.addColorStop(0.45, 'rgba(0,0,0,0)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.30)');
+            sx2.fillStyle = grad; sx2.fillRect(0, 0, 256, 512);
+            for (var ti = 0; ti < 110; ti++) {
+              var tx0 = Math.random() * 256;
+              var tr = Math.random();
+              sx2.strokeStyle = tr < 0.55 ? 'rgba(40,30,21,0.50)' : (tr < 0.85 ? 'rgba(88,66,42,0.45)' : 'rgba(140,108,70,0.30)');
+              sx2.lineWidth = 1 + Math.random() * 2.6;
+              sx2.beginPath(); sx2.moveTo(tx0, -10);
+              sx2.bezierCurveTo(tx0 + (Math.random() * 12 - 6), 150, tx0 + (Math.random() * 12 - 6), 340, tx0 + (Math.random() * 16 - 8), 522);
+              sx2.stroke();
+            }
+            for (var bi = 0; bi < 14; bi++) { // sheen band
+              var bx0 = 70 + Math.random() * 60;
+              sx2.strokeStyle = 'rgba(150,118,78,0.20)';
+              sx2.lineWidth = 1 + Math.random() * 2;
+              sx2.beginPath(); sx2.moveTo(bx0, -10);
+              sx2.bezierCurveTo(bx0 + 4, 150, bx0 - 4, 340, bx0 + 6, 522);
+              sx2.stroke();
+            }
+            strandTex = new THREE.CanvasTexture(sc);
+            if (THREE.sRGBEncoding) strandTex.encoding = THREE.sRGBEncoding;
+          } catch (e) { strandTex = null; }
           function hairPanel(cx, topY, cz, w0, len, bowZ, seed, drapeZ, color, pinch, topArch, wrapZ, taperK, edgeAmp, shade) {
-            var rows = 9, pos = [], idx = [], uvs = [];
+            var rows = 14, pos = [], idx = [], uvs = [];
             var cols = [-1, -0.5, 0, 0.5, 1];
             for (var i = 0; i <= rows; i++) {
               var t = i / rows;
@@ -1233,8 +1268,10 @@
               // separate strands visible as layers instead of one mass.
               mat = hairMat.clone();
               if (shade && mat.color) mat.color.multiplyScalar(shade);
+              if (strandTex) mat.map = strandTex;
             } else {
               mat = std(color || 0x17120e);
+              if (strandTex) mat.map = strandTex;
             }
             mat.side = THREE.DoubleSide;
             var mesh = new THREE.Mesh(geo, mat);
@@ -1270,6 +1307,12 @@
           // Front falls over the shoulders, like the sample's hair —
           // without these the length hides behind her from the front.
           // Wide enough out to lie over the orange fabric, not in the V.
+          // Shoulder-drape strands: start beside the face like the side
+          // strands but drape strongly forward, so the hair crosses
+          // OVER the shoulder onto the chest — no orange gap between
+          // where the side hair ends and the front falls begin.
+          hairPanel(headW.x - headR * 1.30, crownY - 0.02, headW.z + headR * 0.45, 0.038, 0.58, 0.018, 15.0, 0.110, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.95);
+          hairPanel(headW.x + headR * 1.30, crownY - 0.02, headW.z + headR * 0.45, 0.038, 0.58, 0.018, 16.8, 0.110, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.95);
           hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 0.78, 0.038, 0.58, 0.018, 2.6, 0.100, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
           hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.70, 0.038, 0.54, 0.018, 4.4, 0.095, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
           hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.58, 0.038, 0.48, 0.018, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);

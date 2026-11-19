@@ -1191,37 +1191,30 @@
           try {
             var sc = document.createElement('canvas'); sc.width = 256; sc.height = 512;
             var sx2 = sc.getContext('2d');
+            // Smooth "tube" shading across the width — dark edges, a
+            // soft lighter centre — so each strand reads as a rounded
+            // lock of smooth hair. (The previous bold speckle strokes
+            // read as braids/locs; smooth hair is low-contrast and
+            // long, with shading doing the work, not speckles.)
             sx2.fillStyle = '#16120e'; sx2.fillRect(0, 0, 256, 512);
+            var tube = sx2.createLinearGradient(0, 0, 256, 0);
+            tube.addColorStop(0, 'rgba(0,0,0,0.55)');
+            tube.addColorStop(0.28, 'rgba(88,66,42,0.20)');
+            tube.addColorStop(0.5, 'rgba(150,118,78,0.30)');
+            tube.addColorStop(0.72, 'rgba(88,66,42,0.20)');
+            tube.addColorStop(1, 'rgba(0,0,0,0.55)');
+            sx2.fillStyle = tube; sx2.fillRect(0, 0, 256, 512);
             var grad = sx2.createLinearGradient(0, 0, 0, 512);
-            grad.addColorStop(0, 'rgba(70,54,36,0.40)');
+            grad.addColorStop(0, 'rgba(70,54,36,0.35)');
             grad.addColorStop(0.45, 'rgba(0,0,0,0)');
             grad.addColorStop(1, 'rgba(0,0,0,0.30)');
             sx2.fillStyle = grad; sx2.fillRect(0, 0, 256, 512);
-            // Few, WIDE, high-contrast strokes: each strand samples the
-            // whole texture across ~30 screen px, so fine dense strokes
-            // average out to flat black; ~4 bold lines per strand read.
-            for (var ti = 0; ti < 34; ti++) {
+            for (var ti = 0; ti < 18; ti++) { // long, faint strand lines
               var tx0 = Math.random() * 256;
-              sx2.strokeStyle = Math.random() < 0.6 ? 'rgba(104,78,48,0.50)' : 'rgba(158,124,80,0.38)';
-              sx2.lineWidth = 5 + Math.random() * 5;
+              sx2.strokeStyle = Math.random() < 0.5 ? 'rgba(120,92,58,0.16)' : 'rgba(0,0,0,0.20)';
+              sx2.lineWidth = 2 + Math.random() * 3;
               sx2.beginPath(); sx2.moveTo(tx0, -10);
-              sx2.bezierCurveTo(tx0 + (Math.random() * 12 - 6), 150, tx0 + (Math.random() * 12 - 6), 340, tx0 + (Math.random() * 16 - 8), 522);
-              sx2.stroke();
-            }
-            for (var gi = 0; gi < 10; gi++) { // dark grooves between strands
-              var gx0 = Math.random() * 256;
-              sx2.strokeStyle = 'rgba(0,0,0,0.55)';
-              sx2.lineWidth = 3 + Math.random() * 2;
-              sx2.beginPath(); sx2.moveTo(gx0, -10);
-              sx2.bezierCurveTo(gx0 + 4, 150, gx0 - 4, 340, gx0 + 6, 522);
-              sx2.stroke();
-            }
-            for (var bi = 0; bi < 8; bi++) { // sheen band
-              var bx0 = 60 + Math.random() * 90;
-              sx2.strokeStyle = 'rgba(170,134,86,0.30)';
-              sx2.lineWidth = 6 + Math.random() * 3;
-              sx2.beginPath(); sx2.moveTo(bx0, -10);
-              sx2.bezierCurveTo(bx0 + 4, 150, bx0 - 4, 340, bx0 + 6, 522);
+              sx2.bezierCurveTo(tx0 + (Math.random() * 8 - 4), 150, tx0 + (Math.random() * 8 - 4), 340, tx0 + (Math.random() * 10 - 5), 522);
               sx2.stroke();
             }
             strandTex = new THREE.CanvasTexture(sc);
@@ -1308,12 +1301,12 @@
           // pinched so they emerge from beneath it instead of butting
           // against it (kills the step/notch at the jaw line); lengths
           // staggered so no two strands end on the same line.
-          hairPanel(headW.x - headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.040, 0.60, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
-          hairPanel(headW.x - headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.040, 0.55, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
-          hairPanel(headW.x - headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.040, 0.48, 0.012, 7.8, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
-          hairPanel(headW.x + headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.040, 0.60, 0.012, 9.6, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
-          hairPanel(headW.x + headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.040, 0.55, 0.012, 11.4, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
-          hairPanel(headW.x + headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.040, 0.48, 0.012, 13.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
+          hairPanel(headW.x - headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.046, 0.60, 0.012, 4.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
+          hairPanel(headW.x - headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.046, 0.55, 0.012, 6.0, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
+          hairPanel(headW.x - headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.046, 0.48, 0.012, 7.8, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
+          hairPanel(headW.x + headR * 1.18, crownY + 0.01, headW.z + headR * 0.30, 0.046, 0.60, 0.012, 9.6, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 1.00);
+          hairPanel(headW.x + headR * 1.42, crownY + 0.01, headW.z + headR * 0.15, 0.046, 0.55, 0.012, 11.4, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.94);
+          hairPanel(headW.x + headR * 1.62, crownY + 0.01, headW.z + headR * 0.00, 0.046, 0.48, 0.012, 13.2, 0.030, 0x17120e, 0.30, 0.040, 0.018, 0.60, 0.009, 0.90);
           // Front falls over the shoulders, like the sample's hair —
           // without these the length hides behind her from the front.
           // Wide enough out to lie over the orange fabric, not in the V.
@@ -1327,12 +1320,12 @@
           // (z 0.142-0.161 across the chest band) along their whole
           // length — an earlier build had them buried inside the torso
           // until mid-chest, so they appeared to "start" halfway down.
-          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.038, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
-          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.038, 0.54, 0.028, 4.4, 0.080, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
-          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.038, 0.48, 0.026, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
-          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.038, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
-          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.038, 0.54, 0.028, 11.2, 0.080, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
-          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.038, 0.48, 0.026, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
+          hairPanel(headW.x - headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 2.6, 0.075, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
+          hairPanel(headW.x - headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.54, 0.028, 4.4, 0.080, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
+          hairPanel(headW.x - headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.48, 0.026, 6.2, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
+          hairPanel(headW.x + headR * 0.80, crownY - 0.02, headW.z + headR * 1.05, 0.047, 0.58, 0.030, 9.4, 0.075, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.97);
+          hairPanel(headW.x + headR * 1.08, crownY - 0.02, headW.z + headR * 0.98, 0.047, 0.54, 0.028, 11.2, 0.080, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 1.00);
+          hairPanel(headW.x + headR * 1.34, crownY - 0.02, headW.z + headR * 0.88, 0.047, 0.48, 0.026, 13.0, 0.085, 0x20150d, 0, 0.022, -0.012, 0.60, 0.009, 0.92);
         } catch (e) { /* hair panels are cosmetic; never fail the load */ }
         // Portrait framing like the sample video: head, torso and the
         // signing space fill the frame (the old full-body shot made the

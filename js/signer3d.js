@@ -1168,6 +1168,24 @@
           if (faceObj && idx.blink != null) vrmFace = { mesh: faceObj, idx: idx };
         } catch (e) { vrmFace = null; }
         rb.pairs = pairs; rb.model = 'vrm'; rb.ready = true;
+        // Hair tint, applied in the engine so it cannot wash out: this
+        // model's hair textures are light greyscale shading maps whose
+        // colour lives in a multiplier (MToon _Color in the source).
+        // Two file-side attempts (a dark material factor, then darkened
+        // textures) still rendered grey-silver in the page, so the
+        // multiplier is set here, where it deterministically bounds the
+        // result: warm near-black, strand shading preserved because the
+        // texture's variation multiplies through.
+        try {
+          model.traverse(function (o) {
+            if (!o.isMesh && !o.isSkinnedMesh) return;
+            (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mt) {
+              if (mt && mt.color && /hair/i.test(mt.name || '')) {
+                mt.color.r *= 0.14; mt.color.g *= 0.12; mt.color.b *= 0.105;
+              }
+            });
+          });
+        } catch (e) { /* tint is cosmetic; never fail the load */ }
         rig.visible = false;
         // Idle-life anchors: wrap base height for breathing, head/neck
         // bind poses for the micro-sway in tick.

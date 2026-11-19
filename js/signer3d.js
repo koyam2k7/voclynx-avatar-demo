@@ -1177,10 +1177,18 @@
         // result: warm near-black, strand shading preserved because the
         // texture's variation multiplies through.
         try {
+          var tintedMats = [];
           model.traverse(function (o) {
             if (!o.isMesh && !o.isSkinnedMesh) return;
             (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (mt) {
               if (mt && mt.color && /hair/i.test(mt.name || '')) {
+                // GLTFLoader SHARES one material instance across every
+                // primitive mesh, so the traverse visits the same
+                // material dozens of times. Tint each instance ONCE:
+                // multiplying per visit compounds (0.55^47 = 0) and
+                // crushed the hair to flat black for three builds.
+                if (tintedMats.indexOf(mt) >= 0) return;
+                tintedMats.push(mt);
                 mt.color.r *= 0.55; mt.color.g *= 0.50; mt.color.b *= 0.455;
                 try {
                   (window.__niaMats = window.__niaMats || []).push({

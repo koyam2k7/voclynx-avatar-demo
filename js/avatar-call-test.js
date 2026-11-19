@@ -195,7 +195,7 @@
       return;
     }
     try {
-      engine = createSigner3DEngine(canvas, 'nia', { vrm: { url: 'models/anime/nia.vrm?v=21' } });
+      engine = createSigner3DEngine(canvas, 'nia', { vrm: { url: 'models/anime/nia.vrm?v=22' } });
     } catch (e) { engine = null; }
     if (!engine || !engine.ready) {
       engine = null;
